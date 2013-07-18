@@ -40,7 +40,7 @@ import static org.hbase.async.HBaseClient.EMPTY_ARRAY;
 /**
  * Stores basic information about a region.
  */
-final class RegionInfo implements Comparable<RegionInfo> {
+final public class RegionInfo implements Comparable<RegionInfo> {
 
   private static final Logger LOG = LoggerFactory.getLogger(RegionInfo.class);
 
@@ -76,6 +76,11 @@ final class RegionInfo implements Comparable<RegionInfo> {
     return region_name;
   }
 
+  /** Returns the start key for this region */
+  public byte[] startKey() {
+    return startKeyFromRegionName(region_name);
+  }
+  
   /** Returns the stop key (exclusive) of this region.  */
   public byte[] stopKey() {
     return stop_key;
@@ -165,9 +170,34 @@ final class RegionInfo implements Comparable<RegionInfo> {
     }
     return Arrays.copyOf(region_name, comma);
   }
+  
+  /**
+   * Given the name of a region, returns the start key for the region.
+   * @param region_name Full region name
+   * @return The start key if found
+   * @throws IllegalArgumentException if the name of the region is malformed.
+   */
+  static byte[] startKeyFromRegionName(final byte[] region_name) {
+    int comma = 1;  // Can't be at the beginning.
+    int start_comma = 1;
+    for (/**/; comma < region_name.length; comma++) {
+      if (region_name[comma] == ',') {
+        if (start_comma == 1) {
+          start_comma = comma;
+          continue;
+        }
+        break;
+      }
+    }
+    if (comma == region_name.length) {
+      throw new IllegalArgumentException("Malformed region name, contains the"
+        + " wrong number of commas: " + Bytes.pretty(region_name));
+    }
+    return Arrays.copyOfRange(region_name, start_comma + 1, comma);
+  }
 
   @Override
-  public int compareTo(final RegionInfo other) {
+   public int compareTo(final RegionInfo other) {
     return Bytes.memcmp(region_name, other.region_name);
   }
 

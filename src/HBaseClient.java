@@ -1677,6 +1677,63 @@ public final class HBaseClient {
       .addErrback(newLocateRegionErrback(table, key));
   }
 
+  /**
+   * Scans the .META. table for a list of regions for a given table.
+   * The array list will not be sorted on return so if you want to sort by 
+   * start key you'll have to use a comparator. 
+   * @param table Name of the table to fetch regions for
+   * @return A list of RegionInfo objects matching the table name
+   */
+  public Deferred<ArrayList<RegionInfo>> listRegionsForTable(final String table) {
+    
+    final Deferred<ArrayList<RegionInfo>> result = 
+      new Deferred<ArrayList<RegionInfo>>();
+    final ArrayList<RegionInfo> regions = new ArrayList<RegionInfo>();
+    
+    final Scanner scanner = this.newScanner(META);
+    scanner.setKeyRegexp(table + ",");
+    // doesn't like the start key for some reason, maybe the ascii byte mix?
+//    scanner.setStartKey(table);
+//    byte[] endkey = Arrays.copyOf(table, table.length);
+//    endkey[endkey.length-1]++;
+//    scanner.setStopKey(table);
+    scanner.setFamily(INFO);
+    scanner.setQualifier(REGIONINFO);
+    
+    final class ScanCB implements Callback<Object, ArrayList<ArrayList<KeyValue>>> {
+
+      public Object scan() {
+        return scanner.nextRows().addCallback(this);
+      }
+      
+      @Override
+      public Object call(final ArrayList<ArrayList<KeyValue>> rows) throws Exception {
+        if (rows == null) {
+          result.callback(regions);
+          return null;
+        }
+        
+        RegionInfo region = null;
+        for (final ArrayList<KeyValue> row : rows) {
+          for (KeyValue column : row) {
+            if (Arrays.equals(REGIONINFO, column.qualifier())) {
+              final byte[][] tmp = new byte[1][];  // Yes, this is ugly.
+              region = RegionInfo.fromKeyValue(column, tmp);
+              if (!knownToBeNSREd(region)) {
+                 regions.add(region);
+              }
+            }
+          }
+        }
+        
+        return scan();
+      }
+    }
+    
+    new ScanCB().scan();
+    return result;
+  }
+  
   /** Callback executed when a lookup in META completes.  */
   private final class MetaCB implements Callback<Object, ArrayList<KeyValue>> {
     public Object call(final ArrayList<KeyValue> arg) {
