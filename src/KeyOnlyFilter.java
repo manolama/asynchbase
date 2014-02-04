@@ -27,7 +27,7 @@ public class KeyOnlyFilter extends ScanFilter {
 
   @Override
   int predictSerializedSize() {
-    return 1 + NAME.length + 3;
+    return 1 + NAME.length;
   }
   
   @Override
