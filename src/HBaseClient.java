@@ -236,9 +236,8 @@ public final class HBaseClient {
   /**
    * Timer we use to handle all our timeouts.
    * TODO(tsuna): Get it through the ctor to share it with others.
-   * TODO(tsuna): Make the tick duration configurable?
    */
-  private final HashedWheelTimer timer = new HashedWheelTimer(20, MILLISECONDS);
+  private final HashedWheelTimer timer;
 
   /**
    * How many different counters do we want to keep in memory for buffering.
@@ -528,6 +527,8 @@ public final class HBaseClient {
     this.channel_factory = channel_factory;
     zkclient = new ZKClient(quorum_spec, base_path);
     config = new Config();
+    timer = new HashedWheelTimer(config.getShort("asynchbase.timer.tick"), 
+        MILLISECONDS);
   }
 
   /**
