@@ -59,10 +59,19 @@ public class Config {
         .getProperty("os.name").contains("Windows") : false;
   }
 
+  /** How many times we should retry an RPC */
   private int max_retry_attempts;
+  
+  /** How often, in ms, to flush buffered RPC calls */
   private volatile short flush_interval;
+  
+  /** ?? */
   private short nsre_low_watermark;
+  
+  /** The maximum number of NSREs outstanding */
   private short nsre_high_watermark;
+  
+  /** How many buffered increment RPCs to maintain in memory at any given time */
   private volatile int increment_buffer_size;
   
   /**
@@ -334,6 +343,10 @@ public class Config {
     setLocals();
   }
 
+  /**
+   * Sets the local fields that are accessed often enough that we want to avoid
+   * hash map lookups.
+   */
   private void setLocals() {
     max_retry_attempts = getInt("asynchbase.rpcs.max_retry_attempts");
     flush_interval = getShort("asynchbase.rpcs.buffered_flush_interval");
@@ -376,22 +389,28 @@ public class Config {
   }
 
   // GETTERS & SETTERS
+  /** @return How many times we should retry an RPC */
   public int maxRetryAttempts() {
     return max_retry_attempts;
   }
   
+  /** @return How often, in ms, to flush buffered RPC calls */
   public short flushInterval() {
     return flush_interval;
   }
   
+  /** @return ?? */
   public short nsreLowWatermark() {
     return nsre_low_watermark;
   }
   
+  /** @return The maximum number of NSREs outstanding */
   public short nsreHighWatermark() {
     return nsre_high_watermark;
   }
   
+  /** @return How many buffered increment RPCs to maintain in memory at any 
+   * given time */
   public int incrementBufferSize() {
     return increment_buffer_size;
   }
