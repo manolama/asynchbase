@@ -59,6 +59,9 @@ public class Config {
         .getProperty("os.name").contains("Windows") : false;
   }
 
+  private int max_retry_attempts;
+  private volatile short flush_interval;
+  
   /**
    * The list of properties configured to their defaults or modified by users.
    * We use a non-synchronized hash map for fast access as opposed to the
@@ -76,7 +79,7 @@ public class Config {
    * Constructor that initializes default configuration values from the
    * System.properties map.
    */
-  public Config() throws IOException {
+  public Config() {
     loadSystemAndDefaults();
   }
 
@@ -116,6 +119,7 @@ public class Config {
    */
   public void overrideConfig(final String property, final String value) {
     properties.put(property, value);
+    setLocals();
   }
 
   /**
@@ -298,14 +302,23 @@ public class Config {
    */
   private void loadSystemAndDefaults() {
     default_map.put("asynchbase.rpcs.max_retry_attempts", "10");
+    default_map.put("asynchbase.rpcs.buffered_flush_interval", "1000");
     default_map.put("asynchbase.zk.base_path", "/hbase");
+    default_map.put("asynchbase.timer.tick", "20");
     
     for (Map.Entry<String, String> entry : default_map.entrySet()) {
       if (!properties.containsKey(entry.getKey()))
         properties.put(entry.getKey(), entry.getValue());
     }
+    
+    setLocals();
   }
 
+  private void setLocals() {
+    max_retry_attempts = getInt("asynchbase.rpcs.max_retry_attempts");
+    flush_interval = getShort("asynchbase.rpcs.buffered_flush_interval");
+  }
+  
   /**
    * Attempts to load the configuration from the given location
    * @param file Path to the file to load
@@ -339,4 +352,13 @@ public class Config {
     }
   }
 
+  // GETTERS & SETTERS
+  public int maxRetryAttempts() {
+    return max_retry_attempts;
+  }
+  
+  public short flushInterval() {
+    return flush_interval;
+  }
+  
 }
