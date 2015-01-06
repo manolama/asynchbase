@@ -2305,14 +2305,6 @@ public final class HBaseClient {
     return region.table() == EMPTY_ARRAY;
   }
 
-  /**
-   * Low and high watermarks when buffering RPCs due to an NSRE.
-   * @see #handleNSRE
-   * XXX TODO(tsuna): Don't hardcode.
-   */
-  private static short NSRE_LOW_WATERMARK  =  1000;
-  private static short NSRE_HIGH_WATERMARK = 10000;
-
   /** Log a message for every N RPCs we buffer due to an NSRE.  */
   private static final short NSRE_LOG_EVERY      =   500;
 
@@ -2446,8 +2438,8 @@ public final class HBaseClient {
         // If `rpc' is the first element in nsred_rpcs, it's our "probe" RPC,
         // in which case we must not add it to the array again.
         else if ((exists_rpc = nsred_rpcs.get(0)) != rpc) {
-          if (size < NSRE_HIGH_WATERMARK) {
-            if (size == NSRE_LOW_WATERMARK) {
+          if (size < config.nsreHighWatermark()) {
+            if (size == config.nsreLowWatermark()) {
               nsred_rpcs.add(null);  // "Skip" one slot.
             } else if (can_retry_rpc) {
               reject = false;
@@ -2466,10 +2458,10 @@ public final class HBaseClient {
 
       // Stop here if this is a known NSRE and `rpc' is not our probe RPC.
       if (known_nsre && exists_rpc != rpc) {
-        if (size != NSRE_HIGH_WATERMARK && size % NSRE_LOG_EVERY == 0) {
+        if (size != config.nsreHighWatermark() && size % NSRE_LOG_EVERY == 0) {
           final String msg = "There are now " + size
             + " RPCs pending due to NSRE on " + Bytes.pretty(region_name);
-          if (size + NSRE_LOG_EVERY < NSRE_HIGH_WATERMARK) {
+          if (size + NSRE_LOG_EVERY < config.nsreHighWatermark()) {
             LOG.info(msg);  // First message logged at INFO level.
           } else {
             LOG.warn(msg);  // Last message logged with increased severity.

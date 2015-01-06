@@ -61,6 +61,8 @@ public class Config {
 
   private int max_retry_attempts;
   private volatile short flush_interval;
+  private short nsre_low_watermark;
+  private short nsre_high_watermark;
   
   /**
    * The list of properties configured to their defaults or modified by users.
@@ -303,6 +305,8 @@ public class Config {
   private void loadSystemAndDefaults() {
     default_map.put("asynchbase.rpcs.max_retry_attempts", "10");
     default_map.put("asynchbase.rpcs.buffered_flush_interval", "1000");
+    default_map.put("asynchbase.nsre.low_watermark", "1000");
+    default_map.put("asynchbase.nsre.high_watermark", "10000");
     default_map.put("asynchbase.zk.base_path", "/hbase");
     default_map.put("asynchbase.timer.tick", "20");
     
@@ -317,6 +321,8 @@ public class Config {
   private void setLocals() {
     max_retry_attempts = getInt("asynchbase.rpcs.max_retry_attempts");
     flush_interval = getShort("asynchbase.rpcs.buffered_flush_interval");
+    nsre_low_watermark = getShort("asynchbase.nsre.low_watermark");
+    nsre_high_watermark = getShort("asynchbase.nsre.high_watermark");
   }
   
   /**
@@ -361,4 +367,11 @@ public class Config {
     return flush_interval;
   }
   
+  public short nsreLowWatermark() {
+    return nsre_low_watermark;
+  }
+  
+  public short nsreHighWatermark() {
+    return nsre_high_watermark;
+  }
 }

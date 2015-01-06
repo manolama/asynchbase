@@ -800,7 +800,7 @@ final class TestNSREs extends BaseTestHBaseClient {
   // ?? What's the real purpose here?
   @Test
   public void handleNSRELowWatermark() throws Exception {
-    Whitebox.setInternalState(HBaseClient.class, "NSRE_LOW_WATERMARK", (short)1);
+    client.getConfig().overrideConfig("asynchbase.nsre.low_watermark", "1");
     final HBaseRpc probe = MockProbe();
     Whitebox.setInternalState(client, "timer", mock(HashedWheelTimer.class));
     final GetRequest get = new GetRequest(TABLE, KEY);
@@ -836,7 +836,7 @@ final class TestNSREs extends BaseTestHBaseClient {
   
   @Test
   public void handleNSREHighWatermark() throws Exception {
-    Whitebox.setInternalState(HBaseClient.class, "NSRE_HIGH_WATERMARK", (short)2);
+    client.getConfig().overrideConfig("asynchbase.nsre.high_watermark", "2");
     final HBaseRpc probe = MockProbe();
     Whitebox.setInternalState(client, "timer", mock(HashedWheelTimer.class));
     final GetRequest get = new GetRequest(TABLE, KEY);
@@ -894,9 +894,7 @@ final class TestNSREs extends BaseTestHBaseClient {
   
   @Test
   public void handleNSREReProbe() throws Exception {
-    System.out.println("-----------------------");
-    Whitebox.setInternalState(HBaseClient.class, "NSRE_HIGH_WATERMARK", 
-        (short)10000);
+    client.getConfig().overrideConfig("asynchbase.nsre.high_watermark", "10000");
     final HBaseRpc probe = MockProbe();
     Whitebox.setInternalState(client, "timer", mock(HashedWheelTimer.class));
     final GetRequest get = new GetRequest(TABLE, KEY);
