@@ -63,6 +63,7 @@ public class Config {
   private volatile short flush_interval;
   private short nsre_low_watermark;
   private short nsre_high_watermark;
+  private volatile int increment_buffer_size;
   
   /**
    * The list of properties configured to their defaults or modified by users.
@@ -307,6 +308,21 @@ public class Config {
     default_map.put("asynchbase.rpcs.buffered_flush_interval", "1000");
     default_map.put("asynchbase.nsre.low_watermark", "1000");
     default_map.put("asynchbase.nsre.high_watermark", "10000");
+    
+    /**
+     * How many different counters do we want to keep in memory for buffering.
+     * Each entry requires storing the table name, row key, family name and
+     * column qualifier, plus 4 small objects.
+     *
+     * Assuming an average table name of 10 bytes, average key of 20 bytes,
+     * average family name of 10 bytes and average qualifier of 8 bytes, this
+     * would require 65535 * (10 + 20 + 10 + 8 + 4 * 32) / 1024 / 1024 = 11MB
+     * of RAM, which isn't too excessive for a default value.  Of course this
+     * might bite people with large keys or qualifiers, but then it's normal
+     * to expect they'd tune this value to cater to their unusual requirements.
+     */
+    default_map.put("asynchbase.increments.buffer_size", "65535");
+    
     default_map.put("asynchbase.zk.base_path", "/hbase");
     default_map.put("asynchbase.timer.tick", "20");
     
@@ -323,6 +339,7 @@ public class Config {
     flush_interval = getShort("asynchbase.rpcs.buffered_flush_interval");
     nsre_low_watermark = getShort("asynchbase.nsre.low_watermark");
     nsre_high_watermark = getShort("asynchbase.nsre.high_watermark");
+    increment_buffer_size = getInt("asynchbase.increments.buffer_size");
   }
   
   /**
@@ -373,5 +390,9 @@ public class Config {
   
   public short nsreHighWatermark() {
     return nsre_high_watermark;
+  }
+  
+  public int incrementBufferSize() {
+    return increment_buffer_size;
   }
 }

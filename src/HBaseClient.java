@@ -240,20 +240,6 @@ public final class HBaseClient {
   private final HashedWheelTimer timer;
 
   /**
-   * How many different counters do we want to keep in memory for buffering.
-   * Each entry requires storing the table name, row key, family name and
-   * column qualifier, plus 4 small objects.
-   *
-   * Assuming an average table name of 10 bytes, average key of 20 bytes,
-   * average family name of 10 bytes and average qualifier of 8 bytes, this
-   * would require 65535 * (10 + 20 + 10 + 8 + 4 * 32) / 1024 / 1024 = 11MB
-   * of RAM, which isn't too excessive for a default value.  Of course this
-   * might bite people with large keys or qualifiers, but then it's normal
-   * to expect they'd tune this value to cater to their unusual requirements.
-   */
-  private volatile int increment_buffer_size = 65535;
-
-  /**
    * Factory through which we will create all its channels / sockets.
    */
   private final ClientSocketChannelFactory channel_factory;
@@ -743,11 +729,12 @@ public final class HBaseClient {
     if (increment_buffer_size < 0) {
       throw new IllegalArgumentException("Negative: " + increment_buffer_size);
     }
-    final int current = this.increment_buffer_size;
+    final int current = config.incrementBufferSize();
     if (current == increment_buffer_size) {
       return current;
     }
-    this.increment_buffer_size = increment_buffer_size;
+    config.overrideConfig("asynchbase.increments.buffer_size", 
+        Integer.toString(increment_buffer_size));
     final LoadingCache<BufferedIncrement, BufferedIncrement.Amount> prev =
       increment_buffer;  // Volatile-read.
     if (prev != null) {  // Need to resize.
@@ -823,7 +810,7 @@ public final class HBaseClient {
    * @since 1.3
    */
   public int getIncrementBufferSize() {
-    return increment_buffer_size;
+    return config.incrementBufferSize();
   }
 
   /**
@@ -1357,7 +1344,7 @@ public final class HBaseClient {
    * Creates the increment buffer according to current configuration.
    */
   private void makeIncrementBuffer() {
-    final int size = increment_buffer_size;
+    final int size = config.incrementBufferSize();
     increment_buffer = BufferedIncrement.newCache(this, size);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Created increment buffer of " + size + " entries");
