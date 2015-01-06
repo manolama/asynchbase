@@ -3,7 +3,7 @@ before_script:
   - make pom.xml
   - wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz -O /tmp/protobuf-2.5.0.tar.gz
   - tar -C /tmp -xvf /tmp/protobuf-2.5.0.tar.gz
-  - cd /tmp/protobuf-2.5.0 && ./configure --prefix=/usr && make && make install
+  - cd /tmp/protobuf-2.5.0 && ./configure --prefix=/usr && make && sudo make install
 script: export MAVEN_OPTS="-Xmx1024m" && mvn test --quiet
 jdk:
   - oraclejdk7
