@@ -463,12 +463,6 @@ public final class HBaseClient {
     this(quorum_spec, base_path, defaultChannelFactory());
   }
 
-  /** Creates a default channel factory in case we haven't been given one.  */
-  private static NioClientSocketChannelFactory defaultChannelFactory() {
-    final Executor executor = Executors.newCachedThreadPool();
-    return new NioClientSocketChannelFactory(executor, executor);
-  }
-
   /**
    * Constructor for advanced users with special needs.
    * <p>
@@ -496,18 +490,6 @@ public final class HBaseClient {
     this(quorum_spec, base_path, new CustomChannelFactory(executor));
   }
 
-  /** A custom channel factory that doesn't shutdown its executor.  */
-  private static final class CustomChannelFactory
-    extends NioClientSocketChannelFactory {
-      CustomChannelFactory(final Executor executor) {
-        super(executor, executor);
-      }
-      @Override
-      public void releaseExternalResources() {
-        // Do nothing, we don't want to shut down the executor.
-      }
-  }
-
   /**
    * Constructor for advanced users with special needs.
    * <p>
@@ -529,6 +511,81 @@ public final class HBaseClient {
     config = new Config();
     timer = new HashedWheelTimer(config.getShort("asynchbase.timer.tick"), 
         MILLISECONDS);
+  }
+  
+  /**
+   * Constructor accepting a configuration object with at least the 
+   * "asynchbase.zk.quorum" specified in the format {@code "host1,host2,host3"}.
+   * @param config A configuration object
+   * @since 1.7
+   */
+  public HBaseClient(final Config config) {
+    this(config, defaultChannelFactory());
+  }
+  
+  /**
+   * Constructor accepting a configuration object with at least the 
+   * "asynchbase.zk.quorum" specified in the format {@code "host1,host2,host3"}
+   * and an executor thread pool.
+   * @param config A configuration object
+   * @param The executor from which to obtain threads for NIO
+   * operations.  It is <strong>strongly</strong> encouraged to use a
+   * {@link Executors#newCachedThreadPool} or something equivalent unless
+   * you're sure to understand how Netty creates and uses threads.
+   * Using a fixed-size thread pool will not work the way you expect.
+   * <p>
+   * Note that calling {@link #shutdown} on this client will <b>NOT</b>
+   * shut down the executor.
+   * @see NioClientSocketChannelFactory
+   * @since 1.7
+   */
+  public HBaseClient(final Config config, final Executor executor) {
+    this(config, new CustomChannelFactory(executor));
+  }
+  
+  /**
+   * Constructor accepting a configuration object with at least the 
+   * "asynchbase.zk.quorum" specified in the format {@code "host1,host2,host3"}
+   * and a custom channel factory for advanced users.
+   * <p>
+   * Most users don't need to use this constructor.
+   * @param config A configuration object
+   * @param channel_factory A custom factory to use to create sockets.
+   * <p>
+   * Note that calling {@link #shutdown} on this client will also cause the
+   * shutdown and release of the factory and its underlying thread pool.
+   * @since 1.7
+   */
+  public HBaseClient(final Config config, 
+      final ClientSocketChannelFactory channel_factory) {
+    this.channel_factory = channel_factory;
+    if (!config.hasProperty("asynchbase.zk.quorum")) {
+      throw new IllegalArgumentException(
+          "Missing the 'asynchbase.zk.quorum' property");
+    }
+    zkclient = new ZKClient(config.getString("asynchbase.zk.quorum"), 
+        config.getString("asynchbase.zk.base_path"));
+    this.config = config;
+    timer = new HashedWheelTimer(config.getShort("asynchbase.timer.tick"), 
+        MILLISECONDS);
+  }
+  
+  /** Creates a default channel factory in case we haven't been given one.  */
+  private static NioClientSocketChannelFactory defaultChannelFactory() {
+    final Executor executor = Executors.newCachedThreadPool();
+    return new NioClientSocketChannelFactory(executor, executor);
+  }
+
+  /** A custom channel factory that doesn't shutdown its executor.  */
+  private static final class CustomChannelFactory
+    extends NioClientSocketChannelFactory {
+      CustomChannelFactory(final Executor executor) {
+        super(executor, executor);
+      }
+      @Override
+      public void releaseExternalResources() {
+        // Do nothing, we don't want to shut down the executor.
+      }
   }
 
   /**
