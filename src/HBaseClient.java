@@ -240,9 +240,6 @@ public final class HBaseClient {
    */
   private final HashedWheelTimer timer = new HashedWheelTimer(20, MILLISECONDS);
 
-  /** Up to how many milliseconds can we buffer an edit on the client side.  */
-  private volatile short flush_interval = 1000;  // ms
-
   /**
    * How many different counters do we want to keep in memory for buffering.
    * Each entry requires storing the table name, row key, family name and
@@ -655,8 +652,9 @@ public final class HBaseClient {
     if (flush_interval < 0) {
       throw new IllegalArgumentException("Negative: " + flush_interval);
     }
-    final short prev = this.flush_interval;
-    this.flush_interval = flush_interval;
+    final short prev = config.flushInterval();
+    config.overrideConfig("asynchbase.rpcs.buffered_flush_interval", 
+        Short.toString(flush_interval));
     return prev;
   }
 
@@ -755,7 +753,7 @@ public final class HBaseClient {
    * @see #setFlushInterval
    */
   public short getFlushInterval() {
-    return flush_interval;
+    return config.flushInterval();
   }
 
   /**
@@ -1185,7 +1183,7 @@ public final class HBaseClient {
   public Deferred<Long> bufferAtomicIncrement(final AtomicIncrementRequest request) {
     final long value = request.getAmount();
     if (!BufferedIncrement.Amount.checkOverflow(value)  // Value too large.
-        || flush_interval == 0) {           // Client-side buffer disabled.
+        || config.flushInterval() == 0) {           // Client-side buffer disabled.
       return atomicIncrement(request);
     }
 
@@ -1236,7 +1234,7 @@ public final class HBaseClient {
         try {
           flushBufferedIncrements(increment_buffer);
         } finally {
-          final short interval = flush_interval; // Volatile-read.
+          final short interval = config.flushInterval(); // Volatile-read.
           // Even if we paused or disabled the client side buffer by calling
           // setFlushInterval(0), we will continue to schedule this timer
           // forever instead of pausing it.  Pausing it is troublesome because
@@ -1249,7 +1247,7 @@ public final class HBaseClient {
         }
       }
     }
-    final short interval = flush_interval; // Volatile-read.
+    final short interval = config.flushInterval(); // Volatile-read.
     // Handle the extremely unlikely yet possible racy case where:
     //   flush_interval was > 0
     //   A buffered increment came in
