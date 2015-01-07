@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.stumbleupon.async.Callback;
 
-import org.hbase.async.TestNSREs.FakeTimer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
