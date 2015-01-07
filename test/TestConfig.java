@@ -48,16 +48,20 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest({ Config.class })
 public class TestConfig {
 
-  @Before
-  public void before() throws Exception {
-
+  @Test
+  public void test() throws Exception {
+    String val = "3.4028235E38";
+    System.out.println(val);
+    
+    float f = Float.parseFloat(val);
+    
+    System.out.println(f);
   }
-
+  
   @Test
   public void defaultCtor() throws Exception {
     final Config config = new Config();
     assertNotNull(config);
-    assertEquals(2, config.getMap().size());
     assertNull(config.config_location);
   }
 
@@ -66,11 +70,9 @@ public class TestConfig {
     final Config config = new Config();
     assertNotNull(config);
     assertNull(config.config_location);
-    assertEquals(2, config.getMap().size());
     final Config child = new Config(config);
     assertNotNull(child);
     assertNull(child.config_location);
-    assertEquals(2, child.getMap().size());
     assertTrue(config.getMap() != child.getMap());
   }
 
@@ -79,11 +81,9 @@ public class TestConfig {
     final Config config = new Config();
     assertNotNull(config);
     assertNull(config.config_location);
-    assertEquals(2, config.getMap().size());
     final Config child = new Config(config);
     assertNotNull(child);
     assertNull(child.config_location);
-    assertEquals(2, child.getMap().size());
     child.overrideConfig("asynchbase.zk.base_path", "/myhbase");
     assertEquals("/hbase", config.getString("asynchbase.zk.base_path"));
     assertEquals("/myhbase", child.getString("asynchbase.zk.base_path"));
@@ -171,19 +171,19 @@ public class TestConfig {
   @Test
   public void getInt() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.int", 
         Integer.toString(Integer.MAX_VALUE));
     assertEquals(Integer.MAX_VALUE, 
-        config.getInt("asynchbase.rpcs.max_retry_attempts"));
+        config.getInt("asynchbase.int"));
   }
 
   @Test
   public void getIntNegative() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.int", 
         Integer.toString(Integer.MIN_VALUE));
     assertEquals(Integer.MIN_VALUE, 
-        config.getInt("asynchbase.rpcs.max_retry_attempts"));
+        config.getInt("asynchbase.int"));
   }
 
   @Test(expected = NumberFormatException.class)
@@ -202,27 +202,27 @@ public class TestConfig {
   @Test(expected = NumberFormatException.class)
   public void getIntNFE() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.int", 
         "this can't be parsed to int");
-    config.getInt("asynchbase.rpcs.max_retry_attempts");
+    config.getInt("asynchbase.int");
   }
 
   @Test
   public void getShort() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.short", 
         Short.toString(Short.MAX_VALUE));
     assertEquals(Short.MAX_VALUE, 
-        config.getShort("asynchbase.rpcs.max_retry_attempts"));
+        config.getShort("asynchbase.short"));
   }
 
   @Test
   public void getShortNegative() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.short", 
         Short.toString(Short.MIN_VALUE));
     assertEquals(Short.MIN_VALUE, 
-        config.getShort("asynchbase.rpcs.max_retry_attempts"));
+        config.getShort("asynchbase.short"));
   }
 
   @Test(expected = NumberFormatException.class)
@@ -241,24 +241,24 @@ public class TestConfig {
   @Test(expected = NumberFormatException.class)
   public void getShortNFE() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.short", 
         "this can't be parsed to short");
-    config.getShort("asynchbase.rpcs.max_retry_attempts");
+    config.getShort("asynchbase.short");
   }
 
   @Test
   public void getLong() throws Exception {
     final Config config = new Config();
-    assertEquals(10, config.getLong("asynchbase.rpcs.max_retry_attempts"));
+    config.overrideConfig("asynchbase.long", Long.toString(Long.MAX_VALUE));
+    assertEquals(Long.MAX_VALUE, config.getLong("asynchbase.long"));
   }
 
   @Test
   public void getLongNegative() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        Long.toString(Long.MIN_VALUE));
+    config.overrideConfig("asynchbase.long", Long.toString(Long.MIN_VALUE));
     assertEquals(Long.MIN_VALUE, 
-        config.getLong("asynchbase.rpcs.max_retry_attempts"));
+        config.getLong("asynchbase.long"));
   }
 
   @Test(expected = NumberFormatException.class)
@@ -277,59 +277,56 @@ public class TestConfig {
   @Test(expected = NumberFormatException.class)
   public void getLongNullNFE() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        "this can't be parsed to long");
-    config.getLong("asynchbase.rpcs.max_retry_attempts");
+    config.overrideConfig("asynchbase.long", "this can't be parsed to long");
+    config.getLong("asynchbase.long");
   }
 
   @Test
   public void getFloat() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        Float.toString(Float.MAX_VALUE));
+    config.overrideConfig("asynchbase.float", Float.toString(Float.MAX_VALUE));
     assertEquals(Float.MAX_VALUE, 
-        config.getFloat("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getFloat("asynchbase.float"), 0.000001);
   }
 
   @Test
   public void getFloatNegative() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        Float.toString(Float.MIN_VALUE));
+    config.overrideConfig("asynchbase.float", Float.toString(Float.MIN_VALUE));
     assertEquals(Float.MIN_VALUE, 
-        config.getFloat("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getFloat("asynchbase.float"), 0.000001);
   }
 
   @Test
   public void getFloatNaN() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "NaN");
+    config.overrideConfig("asynchbase.float", "NaN");
     assertEquals(Float.NaN, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.float"), 0.000001);
   }
 
   @Test(expected = NumberFormatException.class)
   public void getFloatNaNBadCase() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "nan");
+    config.overrideConfig("asynchbase.float", "nan");
     assertEquals(Float.NaN, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.float"), 0.000001);
   }
 
   @Test
   public void getFloatPIfinity() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "Infinity");
+    config.overrideConfig("asynchbase.float", "Infinity");
     assertEquals(Float.POSITIVE_INFINITY, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.float"), 0.000001);
   }
 
   @Test
   public void getFloatNIfinity() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "-Infinity");
+    config.overrideConfig("asynchbase.float", "-Infinity");
     assertEquals(Float.NEGATIVE_INFINITY, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.float"), 0.000001);
   }
 
   @Test(expected = NullPointerException.class)
@@ -348,59 +345,56 @@ public class TestConfig {
   @Test(expected = NumberFormatException.class)
   public void getFloatNFE() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        "this can't be parsed to float");
-    config.getFloat("asynchbase.rpcs.max_retry_attempts");
+    config.overrideConfig("asynchbase.float", "this can't be parsed to float");
+    config.getFloat("asynchbase.float");
   }
 
   @Test
   public void getDouble() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        Double.toString(Double.MAX_VALUE));
+    config.overrideConfig("asynchbase.double", Double.toString(Double.MAX_VALUE));
     assertEquals(Double.MAX_VALUE, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test
   public void getDoubleNegative() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
-        Double.toString(Double.MIN_VALUE));
+    config.overrideConfig("asynchbase.double", Double.toString(Double.MIN_VALUE));
     assertEquals(Double.MIN_VALUE, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test
   public void getDoubleNaN() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "NaN");
+    config.overrideConfig("asynchbase.double", "NaN");
     assertEquals(Double.NaN, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test(expected = NumberFormatException.class)
   public void getDoubleNaNBadCase() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "nan");
+    config.overrideConfig("asynchbase.double", "nan");
     assertEquals(Double.NaN, 
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test
   public void getDoublePIfinity() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "Infinity");
+    config.overrideConfig("asynchbase.double", "Infinity");
     assertEquals(Double.POSITIVE_INFINITY,
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test
   public void getDoubleNIfinity() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", "-Infinity");
+    config.overrideConfig("asynchbase.double", "-Infinity");
     assertEquals(Double.NEGATIVE_INFINITY,
-        config.getDouble("asynchbase.rpcs.max_retry_attempts"), 0.000001);
+        config.getDouble("asynchbase.double"), 0.000001);
   }
 
   @Test(expected = NullPointerException.class)
@@ -419,9 +413,9 @@ public class TestConfig {
   @Test(expected = NumberFormatException.class)
   public void getDoubleNFE() throws Exception {
     final Config config = new Config();
-    config.overrideConfig("asynchbase.rpcs.max_retry_attempts", 
+    config.overrideConfig("asynchbase.double", 
         "this can't be parsed to double");
-    config.getDouble("asynchbase.rpcs.max_retry_attempts");
+    config.getDouble("asynchbase.double");
   }
 
   @Test
