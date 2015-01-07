@@ -138,7 +138,10 @@ unittest_SRC := \
 	test/TestHBaseClient.java	\
 	test/TestMETALookup.java	\
 	test/TestNSREs.java	\
-	test/TestZKClient.java
+	test/TestZKClient.java	\
+	test/TestPutRequests.java \
+	test/TestGetRequests.java \
+	test/TestDeleteRequests.java 
 
 test_LIBADD := \
 	$(asynchbase_LIBADD)	\
