@@ -272,10 +272,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-<<<<<<< HEAD
     <skipTests>true</skipTests>
-=======
->>>>>>> upstream/next
   </properties>
 
   <pluginRepositories>
