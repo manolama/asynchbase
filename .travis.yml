@@ -7,7 +7,7 @@ before_install:
 before_script:
   - cd ~/build/*/asynchbase
   - make pom.xml
-script: export MAVEN_OPTS="-Xmx1024m" && mvn test --quiet
+script: export MAVEN_OPTS="-Xmx1024m" && mvn test
 jdk:
   - oraclejdk7
   - openjdk6
