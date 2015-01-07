@@ -231,6 +231,9 @@ public class Config {
    */
   public final String getDirectoryName(final String property) {
     final String directory = properties.get(property);
+    if (directory == null || directory.isEmpty()) {
+      return null;
+    }
     if (RUNNING_WINDOWS) {
       // Windows swings both ways. If a forward slash was already used,
       // we'll
@@ -245,15 +248,11 @@ public class Config {
       }
       return directory + "\\";
     }
+    
     if (directory.contains("\\")) {
       throw new IllegalArgumentException(
           "Unix path names cannot contain a back slash");
     }
-
-    if (directory == null || directory.isEmpty()) {
-      return null;
-    }
-
     if (directory.charAt(directory.length() - 1) == '/') {
       return directory;
     }
@@ -364,15 +363,19 @@ public class Config {
   protected void loadConfig(final String file) throws FileNotFoundException,
       IOException {
     final FileInputStream file_stream = new FileInputStream(file);
-    final Properties props = new Properties();
-    props.load(file_stream);
-
-    // load the hash map
-    loadHashMap(props);
-
-    // no exceptions thrown, so save the valid path and exit
-    LOG.info("Successfully loaded configuration file: " + file);
-    config_location = file;
+    try {
+      final Properties props = new Properties();
+      props.load(file_stream);
+  
+      // load the hash map
+      loadHashMap(props);
+  
+      // no exceptions thrown, so save the valid path and exit
+      LOG.info("Successfully loaded configuration file: " + file);
+      config_location = file;
+    } finally {
+      file_stream.close();
+    }
   }
 
   /**

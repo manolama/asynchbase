@@ -546,10 +546,10 @@ public class TestConfig {
     }
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test
   public void getDirectoryNameNull() throws Exception {
     final Config config = new Config();
-    config.getDirectoryName("zookeeper.null");
+    assertNull(config.getDirectoryName("zookeeper.null"));
   }
 
   @Test
