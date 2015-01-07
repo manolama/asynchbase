@@ -1,6 +1,6 @@
 # Copyright (C) 2013  The Async HBase Authors.  All rights reserved.
 # This file is part of Async HBase.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #   - Redistributions of source code must retain the above copyright notice,
@@ -25,7 +25,7 @@
 
 HAMCREST_VERSION := 1.3
 HAMCREST := third_party/hamcrest/hamcrest-core-$(HAMCREST_VERSION).jar
-HAMCREST_BASE_URL := http://search.maven.org/remotecontent?filepath=org/hamcrest/hamcrest-core/$(HAMCREST_VERSION)
+HAMCREST_BASE_URL := http://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/$(HAMCREST_VERSION)
 
 $(HAMCREST): $(HAMCREST).md5
 	set dummy "$(HAMCREST_BASE_URL)" "$(HAMCREST)"; shift; $(FETCH_DEPENDENCY)
