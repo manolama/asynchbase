@@ -37,7 +37,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Properties;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
@@ -48,16 +47,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest({ Config.class })
 public class TestConfig {
 
-  @Test
-  public void test() throws Exception {
-    String val = "3.4028235E38";
-    System.out.println(val);
-    
-    float f = Float.parseFloat(val);
-    
-    System.out.println(f);
-  }
-  
   @Test
   public void defaultCtor() throws Exception {
     final Config config = new Config();
