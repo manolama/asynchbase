@@ -136,11 +136,21 @@ test_SOURCES := \
 
 unittest_SRC := \
 	test/BaseTestHBaseClient.java	\
+<<<<<<< HEAD
+	test/TestHBaseClient.java	\
+	test/TestMETALookup.java	\
+	test/TestNSREs.java	\
+	test/TestZKClient.java	\
+	test/TestPutRequests.java \
+	test/TestGetRequests.java \
+	test/TestDeleteRequests.java 
+=======
 	test/TestConfig.java	\
 	test/TestHBaseClient.java	\
 	test/TestMETALookup.java	\
 	test/TestNSREs.java	\
 	test/TestZKClient.java
+>>>>>>> upstream/next
 
 test_LIBADD := \
 	$(asynchbase_LIBADD)	\

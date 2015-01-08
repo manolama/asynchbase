@@ -222,6 +222,9 @@ public final class HBaseClient {
   protected static final RegionInfo META_REGION =
     new RegionInfo(HBASE96_META, META_REGION_NAME, EMPTY_ARRAY);
 
+  /** How many times to retry an RPC before giving up */
+  protected static int MAX_RETRY_ATTEMPTS = 10;
+  
   /**
    * In HBase 0.95 and up, this magic number is found in a couple places.
    * It's used in the znode that points to the .META. region, to
@@ -1824,8 +1827,13 @@ public final class HBaseClient {
    * @throws NonRecoverableException if the request has had too many attempts
    * already.
    */
+<<<<<<< HEAD
+  static boolean cannotRetryRequest(final HBaseRpc rpc) {
+    return rpc.attempt > MAX_RETRY_ATTEMPTS;
+=======
   boolean cannotRetryRequest(final HBaseRpc rpc) {
     return rpc.attempt > config.maxRetryAttempts();
+>>>>>>> upstream/next
   }
 
   /**
@@ -2291,6 +2299,17 @@ public final class HBaseClient {
     return region.table() == EMPTY_ARRAY;
   }
 
+<<<<<<< HEAD
+  /**
+   * Low and high watermarks when buffering RPCs due to an NSRE.
+   * @see #handleNSRE
+   * XXX TODO(tsuna): Don't hardcode.
+   */
+  private static short NSRE_LOW_WATERMARK  =  1000;
+  private static short NSRE_HIGH_WATERMARK = 10000;
+
+=======
+>>>>>>> upstream/next
   /** Log a message for every N RPCs we buffer due to an NSRE.  */
   private static final short NSRE_LOG_EVERY      =   500;
 
