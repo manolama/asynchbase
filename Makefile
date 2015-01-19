@@ -137,7 +137,6 @@ unittest_SRC := \
 	test/BaseTestHBaseClient.java	\
 	test/TestHBaseClient.java	\
 	test/TestMETALookup.java	\
-	test/TestNSREs.java	\
 	test/TestZKClient.java	\
 	test/TestPutRequests.java \
 	test/TestGetRequests.java \
