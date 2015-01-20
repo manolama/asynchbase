@@ -24,7 +24,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hbase.async.test;
+package org.hbase.async;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -41,11 +41,10 @@ import java.util.Collection;
 
 import org.jboss.netty.logging.InternalLoggerFactory;
 import org.jboss.netty.logging.Slf4JLoggerFactory;
-
 import org.slf4j.Logger;
-
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
@@ -54,6 +53,7 @@ import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 import org.powermock.reflect.Whitebox;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -90,14 +90,14 @@ import org.hbase.async.SubstringComparator;
 import org.hbase.async.TableNotFoundException;
 import org.hbase.async.TimestampsFilter;
 import org.hbase.async.ValueFilter;
-
-import org.hbase.async.test.Common;
+import org.hbase.async.Common;
 
 /**
  * Basic integration and regression tests for asynchbase.
  *
  * Requires a locally running HBase cluster.
  */
+@Ignore // ignore for test runners
 final public class TestIntegration {
 
   private static final Logger LOG = Common.logger(TestIntegration.class);
