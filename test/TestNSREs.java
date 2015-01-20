@@ -79,6 +79,7 @@ import static org.powermock.api.mockito.PowerMockito.verifyPrivate;
                   "ch.qos.*", "org.slf4j.*",
                   "com.sum.*", "org.xml.*"})
 @PrepareForTest({ HBaseClient.class, RegionClient.class })
+@Ignore
 final class TestNSREs extends BaseTestHBaseClient {
   
   private GetRequest[] dummy_gets;
