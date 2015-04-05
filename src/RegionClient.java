@@ -261,11 +261,11 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
     synchronized (this) {
       return new RegionClientStats(
         rpcs_sent.get(),
-        rpcs_inflight.size(),
+        rpcs_inflight != null ? rpcs_inflight.size() : 0,
         pending_rpcs != null ? pending_rpcs.size() : 0,
         rpcid.get(),
         dead,
-        chan.getRemoteAddress().toString(),
+        chan != null ? chan.getRemoteAddress().toString() : "",
         batched_rpcs != null ? batched_rpcs.size() : 0
       );
     }
@@ -592,7 +592,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
 
   }
 
-  private void becomeReady(final Channel chan, final byte server_version) {
+  void becomeReady(final Channel chan, final byte server_version) {
     this.server_version = server_version;
     // The following line will make this client no longer queue incoming
     // RPCs, as we're now ready to communicate with the server.
@@ -1353,6 +1353,10 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
         e = new NonRecoverableException(msg, e);
       }
       rpc.callback(e);
+      {
+        final HBaseRpc removed = rpcs_inflight.remove(rpcid);
+        assert rpc == removed;
+      }
       throw e;
     }
 
