@@ -118,6 +118,7 @@ asynchbase_SOURCES := \
 	src/ValueFilter.java	\
 	src/VersionMismatchException.java	\
 	src/auth/ClientAuthProvider.java	\
+	src/auth/SimpleClientAuthProvider.java	\
 	src/jsr166e/LongAdder.java	\
 	src/jsr166e/Striped64.java	\
 
@@ -149,7 +150,8 @@ unittest_SRC := \
 	test/TestPutRequest.java	\
 	test/TestRegionClient.java	\
 	test/TestRegionClientSendRpc.java	\
-	test/TestZKClient.java
+	test/TestZKClient.java \
+	test/auth/TestSimpleClientAuthProvider.java
 
 test_LIBADD := \
 	$(asynchbase_LIBADD)	\
