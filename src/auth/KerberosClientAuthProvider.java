@@ -61,6 +61,8 @@ import org.slf4j.LoggerFactory;
  * @since 1.7
  */
 public class KerberosClientAuthProvider extends ClientAuthProvider {
+  public static final String PASSWORD_KEY = "hbase.regionserver.kerberos.password";
+  public static final String PRINCIPAL_KEY = "hbase.kerberos.regionserver.principal";
   private static final Logger LOG = LoggerFactory.getLogger(
       KerberosClientAuthProvider.class);
 
@@ -72,16 +74,14 @@ public class KerberosClientAuthProvider extends ClientAuthProvider {
    * @param hbase_client The HBaseClient to fetch configuration and timers from
    * @throws IllegalArgumentException if the 
    * asynchbase.security.auth.simple.username is missing, null or empty.
-   * @throws IllegalStateException if the login was uncessful
+   * @throws IllegalStateException if the login was unsuccessful
    */
   public KerberosClientAuthProvider(final HBaseClient hbase_client) {
     super(hbase_client);
 
     String password = null;
-    if (hbase_client.getConfig()
-        .hasProperty("asynchbase.security.auth.kerberos.password")) {
-      password = hbase_client.getConfig()
-          .getString("asynchbase.security.auth.kerberos.password");
+    if (hbase_client.getConfig().hasProperty(PASSWORD_KEY)) {
+      password = hbase_client.getConfig().getString(PASSWORD_KEY);
     }
     try {
       Login.initUserIfNeeded(hbase_client.getConfig(), 
@@ -102,8 +102,7 @@ public class KerberosClientAuthProvider extends ClientAuthProvider {
       final Map<String, String> props) {
     final Login client_login = Login.getCurrentLogin();
 
-    String server_principal = hbase_client.getConfig()
-        .getString("asynchbase.security.auth.kerberos.regionserver.principal");
+    String server_principal = hbase_client.getConfig().getString(PRINCIPAL_KEY);
     if (server_principal.contains("_HOST")) {
       try {
         final String host = InetAddress.getByName(service_ip)

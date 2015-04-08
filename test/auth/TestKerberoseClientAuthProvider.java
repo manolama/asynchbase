@@ -106,8 +106,7 @@ public class TestKerberoseClientAuthProvider {
     principal = mock(Principal.class);
     kerberos_name = mock(KerberosName.class);
     
-    config.overrideConfig(
-        "asynchbase.security.auth.kerberos.regionserver.principal", "ephebe");
+    config.overrideConfig(KerberosClientAuthProvider.PRINCIPAL_KEY, "ephebe");
     
     when(client.getConfig()).thenReturn(config);
     when(login.getSubject()).thenReturn(subject);
