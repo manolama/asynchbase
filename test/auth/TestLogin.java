@@ -67,11 +67,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
 @RunWith(PowerMockRunner.class)
+@PowerMockIgnore({"javax.management.*", "javax.xml.*",
+  "ch.qos.*", "org.slf4j.*",
+  "com.sum.*", "org.xml.*"})
 @PrepareForTest({ HashedWheelTimer.class, Configuration.class, Subject.class, 
   AppConfigurationEntry.class, LoginContext.class, Login.class, 
   KerberosTicket.class, KerberosPrincipal.class, System.class, Shell.class })

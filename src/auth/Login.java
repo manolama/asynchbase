@@ -79,7 +79,7 @@ public class Login {
   
   /** Sasl config string for HBase */
   public static final String LOGIN_CONTEXT_NAME_KEY = 
-      "asynchbase.security.auth.sasl.clientconfig";
+      "java.security.auth.login.config";
   
   /** Random number generator to generate jitter for refreshing tickets to 
    * avoid slamming the authentication system with requests from various clients
