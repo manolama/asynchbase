@@ -118,6 +118,7 @@ asynchbase_SOURCES := \
 	src/ValueFilter.java	\
 	src/VersionMismatchException.java	\
 	src/auth/ClientAuthProvider.java	\
+	src/auth/KerberosClientAuthProvider.java	\
 	src/auth/Login.java	\
 	src/auth/SimpleClientAuthProvider.java	\
 	src/jsr166e/LongAdder.java	\
@@ -152,6 +153,7 @@ unittest_SRC := \
 	test/TestRegionClient.java	\
 	test/TestRegionClientSendRpc.java	\
 	test/TestZKClient.java \
+	test/auth/TestKerberosClientAuthProvider.java \
 	test/auth/TestLogin.java \
 	test/auth/TestSimpleClientAuthProvider.java
 
