@@ -38,6 +38,7 @@ import org.hbase.async.HBaseClient;
  * @since 1.7
  */
 public class SimpleClientAuthProvider extends ClientAuthProvider {
+  public static final String USERNAME_KEY = "hbase.security.simple.username";
   
   /** Username to use for auth */
   private final String username;
@@ -50,12 +51,10 @@ public class SimpleClientAuthProvider extends ClientAuthProvider {
    */
   public SimpleClientAuthProvider(final HBaseClient hbase_client) {
     super(hbase_client);
-    if (!hbase_client.getConfig()
-        .hasProperty("asynchbase.security.auth.simple.username")) {
+    if (!hbase_client.getConfig().hasProperty(USERNAME_KEY)) {
       throw new IllegalArgumentException("Missing client username");
     }
-    username = hbase_client.getConfig()
-        .getString("asynchbase.security.auth.simple.username");
+    username = hbase_client.getConfig().getString(USERNAME_KEY);
     if (username == null || username.isEmpty()) {
       throw new IllegalArgumentException("Missing client username");
     }

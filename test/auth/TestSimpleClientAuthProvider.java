@@ -52,7 +52,7 @@ public class TestSimpleClientAuthProvider {
     config = new Config();
     client = mock(HBaseClient.class);
     when(client.getConfig()).thenReturn(config);
-    config.overrideConfig("asynchbase.security.auth.simple.username", "Weatherwax");
+    config.overrideConfig(SimpleClientAuthProvider.USERNAME_KEY, "Weatherwax");
   }
   
   @Test
@@ -75,13 +75,13 @@ public class TestSimpleClientAuthProvider {
   
   @Test (expected = IllegalArgumentException.class)
   public void ctorNullUsername() throws Exception {
-    config.overrideConfig("asynchbase.security.auth.simple.username", null);
+    config.overrideConfig(SimpleClientAuthProvider.USERNAME_KEY, null);
     new SimpleClientAuthProvider(client);
   }
   
   @Test (expected = IllegalArgumentException.class)
   public void ctorEmptyUsername() throws Exception {
-    config.overrideConfig("asynchbase.security.auth.simple.username", "");
+    config.overrideConfig(SimpleClientAuthProvider.USERNAME_KEY, "");
     new SimpleClientAuthProvider(client);
   }
   
