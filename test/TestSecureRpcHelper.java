@@ -33,74 +33,25 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyMap;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 
 import javax.security.auth.Subject;
-import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
-import org.hbase.async.auth.ClientAuthProvider;
 import org.hbase.async.auth.KerberosClientAuthProvider;
-import org.hbase.async.auth.Login;
 import org.hbase.async.auth.MockProvider;
 import org.hbase.async.auth.SimpleClientAuthProvider;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"javax.management.*", "javax.xml.*",
-  "ch.qos.*", "org.slf4j.*",
-  "com.sum.*", "org.xml.*"})
-@PrepareForTest({ HBaseClient.class, Login.class, RegionClient.class,
-  SaslClient.class, KerberosClientAuthProvider.class, SecureRpcHelper.class,
-  Subject.class })
-public class TestSecureRpcHelper {
-  private static byte[] unwrapped_payload = 
-    { 'p', 't', 'r', 'a', 'c', 'i' };
-  private static byte[] wrapped_payload = 
-    { 0, 0, 0, 10, 0, 0, 0, 6, 'p', 't', 'r', 'a', 'c', 'i'};
-  
-  private HBaseClient client;
-  private Config config;
-  private RegionClient region_client;
-  private SocketAddress remote_endpoint;
-  private KerberosClientAuthProvider kerberos_provider;
-  private SaslClient sasl_client;
-  
-  @SuppressWarnings("unchecked")
-  @Before
-  public void before() throws Exception {
-    config = new Config();
-    client = mock(HBaseClient.class);
-    region_client = mock(RegionClient.class);
-    remote_endpoint = new InetSocketAddress("127.0.0.1", 50512);
-    kerberos_provider = mock(KerberosClientAuthProvider.class);
-    sasl_client = mock(SaslClient.class);
-    
-    when(client.getConfig()).thenReturn(config);
-    PowerMockito.whenNew(KerberosClientAuthProvider.class).withAnyArguments()
-      .thenReturn(kerberos_provider);
-    when(kerberos_provider.newSaslClient(anyString(), anyMap()))
-      .thenReturn(sasl_client);
-  }
+public class TestSecureRpcHelper extends BaseTestSecureRpcHelper {
   
   @Test (expected = IllegalArgumentException.class)
   public void ctorNoConfigs() throws Exception {
@@ -330,116 +281,4 @@ public class TestSecureRpcHelper {
     helper.doProcessChallenge(challenge);
   }
   
-  /**
-   * Super basic implementation of the SecureRpcHelper for unit testing
-   */
-  static class UTHelper extends SecureRpcHelper {
-    Channel chan;
-    ChannelBuffer buffer;    
-    public UTHelper(final HBaseClient hbase_client, final RegionClient region_client,
-        final SocketAddress remote_endpoint) {
-      super(hbase_client, region_client, remote_endpoint);
-    }
-
-    @Override
-    public void sendHello(final Channel channel) {
-      chan = channel;
-    }
-
-    @Override
-    public ChannelBuffer handleResponse(ChannelBuffer buf, Channel chan) {
-      this.chan = chan;
-      buffer = buf;
-      return buf;
-    }
-    
-    byte[] doProcessChallenge(final byte[] b) {
-      return processChallenge(b);
-    }
-    
-    ClientAuthProvider getProvider() {
-      return client_auth_provider;
-    }
-    
-    boolean useWrap() {
-      return use_wrap;
-    }
-    
-    String getHostIP() {
-      return host_ip;
-    }
-    
-    SaslClient getSaslClient() {
-      return sasl_client;
-    }
-  }
-
-  /**
-   * Prepends a byte array with it's length and creates a wrapped channel buffer
-   * @param payload The payload to wrap
-   * @return A channel buffer for testing
-   */
-  private ChannelBuffer getBuffer(final byte[] payload) {
-    final byte[] buf = new byte[payload.length + 4];
-    System.arraycopy(payload, 0, buf, 4, payload.length);
-    Bytes.setInt(buf, payload.length);
-    return ChannelBuffers.wrappedBuffer(buf);
-  }
-  
-  /**
-   * Helper to unwrap a wrapped buffer, pretending the sasl client simply 
-   * prepends the length.
-   * @throws Exception Exception it really shouldn't. Really.
-   */
-  private void setupUnwrap() throws Exception {
-    // TODO - figure out a way to use real wrapping. For now we just stick on
-    // two bytes or take em off.
-    when(sasl_client.unwrap(any(byte[].class), anyInt(), anyInt()))
-      .thenAnswer(new Answer<byte[]>() {
-        @Override
-        public byte[] answer(final InvocationOnMock invocation)
-            throws Throwable {
-          final byte[] buffer = (byte[])invocation.getArguments()[0];
-          final int length = (Integer)invocation.getArguments()[2];
-          final byte[] unwrapped = new byte[length - 4];
-          System.arraycopy(buffer, 4, unwrapped, 0, length - 4);
-          return unwrapped;
-        }
-    });
-  }
-  
-  /**
-   * Helper to wrap a buffer, pretending the sasl client simply prepends the
-   * length.
-   * @throws Exception it really shouldn't. Really.
-   */
-  private void setupWrap() throws Exception {
-    when(sasl_client.wrap(any(byte[].class), anyInt(), anyInt()))
-    .thenAnswer(new Answer<byte[]>() {
-      @Override
-      public byte[] answer(final InvocationOnMock invocation)
-          throws Throwable {
-        final byte[] buffer = (byte[])invocation.getArguments()[0];
-        final int length = (Integer)invocation.getArguments()[2];
-        final byte[] wrapped = new byte[length + 4];
-        System.arraycopy(buffer, 0, wrapped, 4, length);
-        Bytes.setInt(wrapped, length);
-        return wrapped;
-      }
-    });
-  }
-
-  @SuppressWarnings("unchecked")
-  private void setupChallenge() throws Exception {
-    PowerMockito.mockStatic(Subject.class);
-    PowerMockito.doAnswer(new Answer<byte[]>() {
-      @Override
-      public byte[] answer(final InvocationOnMock invocation) throws Throwable {
-        final PrivilegedExceptionAction<byte[]> cb = 
-            (PrivilegedExceptionAction<byte[]>)invocation.getArguments()[1];
-        return cb.run();
-      }
-    }).when(Subject.class);
-    Subject.doAs(any(Subject.class), any(PrivilegedExceptionAction.class));
-  }
 }
