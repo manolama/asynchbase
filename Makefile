@@ -153,6 +153,7 @@ unittest_SRC := \
 	test/TestRegionClient.java	\
 	test/TestRegionClientSendRpc.java	\
 	test/TestZKClient.java \
+	test/auth/MockProvider.java \
 	test/auth/TestKerberosClientAuthProvider.java \
 	test/auth/TestLogin.java \
 	test/auth/TestSimpleClientAuthProvider.java
