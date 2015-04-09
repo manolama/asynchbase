@@ -220,6 +220,20 @@ public class TestSecureRpcHelper96 extends BaseTestSecureRpcHelper {
   }
   
   @Test
+  public void handleResponseProcessChallengeBadState() throws Exception {
+    setupChallenge();
+
+    // kinda fake in that we'll process it in one go
+    when(sasl_client.isComplete()).thenReturn(false).thenReturn(true);
+    final ChannelBuffer buf = getSaslBuffer(1, new byte[] { 42 });
+    assertTrue(buf == helper.handleResponse(buf, channel));
+    assertNull(buffers);
+    verify(region_client, never()).becomeReady(channel, 
+        RegionClient.SERVER_VERSION_095_OR_ABOVE);
+    verify(sasl_client, never()).getNegotiatedProperty(Sasl.QOP);
+  }
+  
+  @Test
   public void handleResponseProcessChallengeNotCompleted() throws Exception {
     setupChallenge();
 
@@ -276,8 +290,7 @@ public class TestSecureRpcHelper96 extends BaseTestSecureRpcHelper {
   @Test
   public void handleResponseSaslComplete() throws Exception {
     setupChallenge();
-
-    // kinda fake in that we'll process it in one go
+    
     when(sasl_client.isComplete()).thenReturn(true);
     final ChannelBuffer buf = getSaslBuffer(0, new byte[] { 42 });
     assertTrue(buf == helper.handleResponse(buf, channel));
@@ -290,9 +303,9 @@ public class TestSecureRpcHelper96 extends BaseTestSecureRpcHelper {
   @Test
   public void handleResponseSaslCompleteWrapped() throws Exception {
     setupUnwrap();
+    
     final ChannelBuffer buf = ChannelBuffers.wrappedBuffer(wrapped_payload);
     Whitebox.setInternalState(helper, "use_wrap", true);
-    // kinda fake in that we'll process it in one go
     when(sasl_client.isComplete()).thenReturn(true);
     final ChannelBuffer unwrapped = helper.handleResponse(buf, channel);
     assertArrayEquals(unwrapped.array(), unwrapped_payload);
@@ -300,6 +313,20 @@ public class TestSecureRpcHelper96 extends BaseTestSecureRpcHelper {
     verify(region_client, never()).becomeReady(channel, 
         RegionClient.SERVER_VERSION_095_OR_ABOVE);
     verify(sasl_client, never()).getNegotiatedProperty(Sasl.QOP);
+  }
+  
+  /**
+   * Creates a buffer with the sasl state at the top
+   * @param state The state to encode
+   * @param payload The pyalod to wrap
+   * @return A channel buffer for testing
+   */
+  protected ChannelBuffer getSaslBuffer(final int state, final byte[] payload) {
+    final byte[] buf = new byte[payload.length + 4 + 4];
+    System.arraycopy(payload, 0, buf, 8, payload.length);
+    System.arraycopy(Bytes.fromInt(payload.length), 0, buf, 4, 4);
+    Bytes.setInt(buf, state);
+    return ChannelBuffers.wrappedBuffer(buf);
   }
   
   /**
