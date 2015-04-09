@@ -203,7 +203,7 @@ public class TestLogin {
   @Test
   public void getRefreshDelay() throws Exception {
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     // should be within 80% of the end time
     assertTrue(delay < end_time.getTime());
     assertTrue(delay >= (end_time.getTime() - start_time.getTime()) * 0.80);
@@ -212,7 +212,7 @@ public class TestLogin {
   @Test
   public void getRefreshDelayNoTicket() throws Exception {
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", 
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", 
         (KerberosTicket)null);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
@@ -222,7 +222,7 @@ public class TestLogin {
     when(ticket.getRenewTill()).thenReturn(end_time);
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
     Whitebox.setInternalState(login, "using_ticket_cache", true);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
   
@@ -230,7 +230,7 @@ public class TestLogin {
   public void getRefreshPastExpiration() throws Exception {
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
     PowerMockito.when(System.currentTimeMillis()).thenReturn(1388538060000L);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
   
@@ -238,7 +238,7 @@ public class TestLogin {
   public void getRefreshWithinMinTime() throws Exception {
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
     PowerMockito.when(System.currentTimeMillis()).thenReturn(1388537942000L);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(0, delay);
   }
   
@@ -248,7 +248,7 @@ public class TestLogin {
     // be less than a minute
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
     start_time.setTime(1388537942000L);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
   
@@ -258,7 +258,7 @@ public class TestLogin {
     // Friends don't let friend's KDC issue funky tickets like this
     end_time.setTime(1388534400000L);
     start_time.setTime(1388538000000L);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
   
@@ -266,7 +266,7 @@ public class TestLogin {
   public void getRefreshSameTicketTimes() throws Exception {
     final Login login = new Login(config, timer, CONTEXT_NAME, callback);
     end_time.setTime(1388534400000L);
-    final long delay = Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
+    final long delay = (Long)Whitebox.invokeMethod(login, "getRefreshDelay", ticket);
     assertEquals(Login.MIN_TIME_BEFORE_RELOGIN, delay);
   }
 
