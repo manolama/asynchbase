@@ -109,6 +109,7 @@ asynchbase_SOURCES := \
 	src/RowLockRequest.java	\
 	src/ScanFilter.java	\
 	src/Scanner.java	\
+	src/SecureRpcHelper96.java	\
 	src/SingletonList.java	\
 	src/SubstringComparator.java	\
 	src/TableNotFoundException.java	\
@@ -153,6 +154,7 @@ unittest_SRC := \
 	test/TestPutRequest.java	\
 	test/TestRegionClient.java	\
 	test/TestRegionClientSendRpc.java	\
+	test/TestSecureRpcHelper96.java	\
 	test/TestZKClient.java \
 	test/auth/MockProvider.java \
 	test/auth/TestKerberosClientAuthProvider.java \
