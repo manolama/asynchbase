@@ -110,7 +110,7 @@ public class TestSecureRpcHelper {
   
   @Test
   public void ctorSimple() throws Exception {
-    config.overrideConfig("asynchbase.security.auth.simple.username", "Drumknott");
+    config.overrideConfig(SimpleClientAuthProvider.USERNAME_KEY, "Drumknott");
     final UTHelper helper = new UTHelper(client, region_client, remote_endpoint);
     assertTrue(helper.getProvider() instanceof SimpleClientAuthProvider);
     assertFalse(helper.useWrap());
