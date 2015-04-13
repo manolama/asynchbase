@@ -83,10 +83,17 @@ public class KerberosClientAuthProvider extends ClientAuthProvider {
     if (hbase_client.getConfig().hasProperty(PASSWORD_KEY)) {
       password = hbase_client.getConfig().getString(PASSWORD_KEY);
     }
+    
+    String context_name = hbase_client.getConfig()
+        .getString(Login.LOGIN_CONTEXT_NAME_KEY);
+    if (context_name == null || context_name.isEmpty()) {
+      context_name = "Client";
+    }
+    
     try {
       Login.initUserIfNeeded(hbase_client.getConfig(), 
           (HashedWheelTimer)hbase_client.getTimer(),
-          hbase_client.getConfig().getString(Login.LOGIN_CONTEXT_NAME_KEY),
+          context_name,
           new ClientCallbackHandler(password));
     } catch (LoginException e) {
       throw new IllegalStateException("Failed to get login context", e);
