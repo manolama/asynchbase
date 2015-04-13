@@ -79,7 +79,7 @@ public class Login {
   
   /** Sasl config string for HBase */
   public static final String LOGIN_CONTEXT_NAME_KEY = 
-      "java.security.auth.login.config";
+      "hbase.sasl.clientconfig";
   
   /** Random number generator to generate jitter for refreshing tickets to 
    * avoid slamming the authentication system with requests from various clients
@@ -225,6 +225,7 @@ public class Login {
               ") and your " + LOGIN_CONTEXT_NAME_KEY + "(=" +
               login_context_name + ")");
     }
+    LOG.debug("Constructing login context with context: " + login_context_name);
     final LoginContext login_context = new LoginContext(login_context_name, 
         callback_handler);
     login_context.login();
