@@ -200,8 +200,9 @@ public class Login {
     // you can decrease the interval of expiration of tickets 
     // (for example, to 3 minutes) by running :
     // "modprinc -maxlife 3mins <principal>" in kadmin.
-    timer.newTimeout(new TicketRenewalTask(), getRefreshDelay(getTGT()), 
-        TimeUnit.MILLISECONDS);
+    final long delay = getRefreshDelay(getTGT());
+    timer.newTimeout(new TicketRenewalTask(), delay, TimeUnit.MILLISECONDS);
+    LOG.info("Scheduled ticket renewal in " + delay + " ms");
   }
   
   /** @return the current subject */
