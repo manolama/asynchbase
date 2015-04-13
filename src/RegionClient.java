@@ -213,8 +213,11 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
    */
   private final Semaphore meta_lookups = new Semaphore(100);
 
+  /** A class for handling authentication and encryption when communicating
+   * with a region server. This will only be initialized if configured and all
+   * RPCs will pass through it.
+   */
   private SecureRpcHelper secure_rpc_helper;
-  
   
   /**
    * Constructor.
