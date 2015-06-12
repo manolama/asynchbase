@@ -222,7 +222,16 @@ public final class HBaseClient {
   /** New for HBase 0.95 and up: the region info for META is fixed.  */
   protected static final RegionInfo META_REGION =
     new RegionInfo(HBASE96_META, META_REGION_NAME, EMPTY_ARRAY);
-
+  /** HBase 0.98 and up: -ROOT- is now hbase:root */
+  static final byte[] HBASE98_ROOT =
+      new byte[] { 'h', 'b', 'a', 's', 'e', ':', 'r', 'o', 'o', 't'};
+  static final byte[] HBASE98_ROOT_REGION =
+      new byte[] { 'h', 'b', 'a', 's', 'e', ':', 'r', 'o', 'o', 't', ',',',', '0' };
+  static final byte[] HBASE96_META_REGION_NAME =
+      new byte[] { 'h', 'b', 'a', 's', 'e', ':', 'm', 'e', 't', 'a', ',', ',', '1' };
+  static final RegionInfo HBASE96_META_REGION =
+      new RegionInfo(HBASE96_META, HBASE96_META_REGION_NAME, EMPTY_ARRAY);
+  
   /**
    * In HBase 0.95 and up, this magic number is found in a couple places.
    * It's used in the znode that points to the .META. region, to
@@ -264,6 +273,11 @@ public final class HBaseClient {
    */
   volatile boolean has_root = true;
 
+  /**
+   * Wether cluster is 98+, root and meta is named differently
+   */
+  volatile boolean is_hbase96 = false;
+  
   /**
    * Maps {@code (table, start_key)} pairs to the {@link RegionInfo} that
    * serves this key range for this table.
@@ -1171,8 +1185,10 @@ public final class HBaseClient {
   private RegionClient clientFor(final RegionInfo region) {
     if (region == null) {
       return null;
-    } else if (region == META_REGION || Bytes.equals(region.table(), ROOT)) {
-      // HBase 0.95+: META_REGION (which is 0.95 specific) is our root.
+    } else if ((!has_root && region == HBASE96_META_REGION)
+        || Bytes.equals(region.table(), ROOT)
+        || Bytes.equals(region.table(), HBASE98_ROOT)) {
+      // HBase 0.95+: HBASE96_META_REGION (which is 0.95 specific) is our root.
       // HBase 0.94 and earlier: if we're looking for -ROOT-, stop here.
       return rootregion;
     }
@@ -1922,19 +1938,34 @@ public final class HBaseClient {
    * @see #discoverRegion
    */
   private Deferred<Object> locateRegion(final byte[] table, final byte[] key) {
-    final boolean is_meta = Bytes.equals(table, META);
-    final boolean is_root = !is_meta && Bytes.equals(table, ROOT);
+    final boolean is_meta = Bytes.equals(table, META) || Bytes.equals(table, HBASE96_META);
+    final boolean is_root =
+        !is_meta && (Bytes.equals(table, ROOT) || Bytes.equals(table, HBASE98_ROOT));
     // We don't know in which region this row key is.  Let's look it up.
     // First, see if we already know where to look in .META.
     // Except, obviously, we don't wanna search in META for META or ROOT.
     final byte[] meta_key = is_root ? null : createRegionSearchKey(table, key);
     final byte[] meta_name;
     final RegionInfo meta_region;
+    final byte[] root_table_name;
+    final byte[] root_region_name;
+
     if (has_root) {
-      meta_region = is_meta || is_root ? null : getRegion(META, meta_key);
-      meta_name = META;
+      if(is_hbase96) {
+        meta_region = is_meta || is_root ? null : getRegion(HBASE96_META, meta_key);
+        meta_name = HBASE96_META;
+        root_table_name = HBASE98_ROOT;
+        root_region_name = HBASE98_ROOT_REGION;
+      } else {
+        meta_region = is_meta || is_root ? null : getRegion(META, meta_key);
+        meta_name = META;
+        root_table_name = ROOT;
+        root_region_name = ROOT_REGION;
+      }
     } else {
-      meta_region = META_REGION;
+      root_table_name = null;
+      root_region_name = null;
+      meta_region = HBASE96_META_REGION;
       meta_name = HBASE96_META;
     }
 
@@ -1980,6 +2011,8 @@ public final class HBaseClient {
     // to be non-null but then it becomes null before the next statement.
     final RegionClient rootregion = this.rootregion;
     if (rootregion == null || !rootregion.isAlive()) {
+      //TODO. Clean this log, just added to trobleshoot RS lookup loop
+      LOG.info("Calling zookeeper to get root region");
       return zkclient.getDeferredRoot();
     } else if (is_root) {  // Don't search ROOT in ROOT.
       return Deferred.fromResult(null);  // We already got ROOT (w00t).
@@ -1988,11 +2021,14 @@ public final class HBaseClient {
 
     // Alright so we don't even know where to look in .META.
     // Let's lookup the right .META. entry in -ROOT-.
-    final byte[] root_key = createRegionSearchKey(META, meta_key);
-    final RegionInfo root_region = new RegionInfo(ROOT, ROOT_REGION,
+    final byte[] root_key = createRegionSearchKey(meta_name, meta_key);
+    final RegionInfo root_region = new RegionInfo(root_table_name,
+                                                  root_region_name,
                                                   EMPTY_ARRAY);
     root_lookups.increment();
-    return rootregion.getClosestRowBefore(root_region, ROOT, root_key, INFO)
+    //TODO. CLean this log, just added to trobleshoot RS lookup loop
+    LOG.info("Search -ROOT- table or root region for .META., " + root_region );
+    return rootregion.getClosestRowBefore(root_region, root_table_name, root_key, INFO)
       .addCallback(root_lookup_done)
       // This errback needs to run *after* the callback above.
       .addErrback(newLocateRegionErrback(table, key));
@@ -2087,11 +2123,14 @@ public final class HBaseClient {
    */
   private RegionInfo getRegion(final byte[] table, final byte[] key) {
     if (has_root) {
+      if (Bytes.equals(table, HBASE98_ROOT)) {               // HBase 0.98 and up.
+        return new RegionInfo(HBASE98_ROOT, HBASE98_ROOT_REGION, EMPTY_ARRAY);
+      }
       if (Bytes.equals(table, ROOT)) {               // HBase 0.94 and before.
         return new RegionInfo(ROOT, ROOT_REGION, EMPTY_ARRAY);
       }
     } else if (Bytes.equals(table, HBASE96_META)) {  // HBase 0.95 and up.
-      return META_REGION;
+      return HBASE96_META_REGION;
     }
 
     byte[] region_name = createRegionSearchKey(table, key);
@@ -2313,7 +2352,8 @@ public final class HBaseClient {
   private void invalidateRegionCache(final byte[] region_name,
                                      final boolean mark_as_nsred,
                                      final String reason) {
-    if ((region_name == META_REGION_NAME && !has_root)  // HBase 0.95+
+    if ((region_name == HBASE96_META_REGION_NAME && !has_root && is_hbase96)  // HBase 0.95+ w/o root
+        || (region_name == HBASE98_ROOT_REGION && has_root && is_hbase96)  // HBase 0.95+ w/ root
         || region_name == ROOT_REGION) {                // HBase <= 0.94
       if (reason != null) {
         LOG.info("Invalidated cache for " + (has_root ? "-ROOT-" : ".META.")
@@ -3375,6 +3415,7 @@ public final class HBaseClient {
                     + host + " in \"" + Bytes.pretty(data) + '"');
           return null;  // TODO(tsuna): Add a watch to wait until the file changes.
         }
+        is_hbase96 = false;
         LOG.info("Connecting to -ROOT- region @ " + ip + ':' + port);
         has_root = true;
         final RegionClient client = rootregion = newClient(ip, port);
@@ -3410,9 +3451,9 @@ public final class HBaseClient {
 
         final String ip;
         final int port;
+        ZooKeeperPB.MetaRegionServer meta = null;
         try {
-          final ZooKeeperPB.MetaRegionServer meta =
-            ZooKeeperPB.MetaRegionServer.newBuilder()
+          meta = ZooKeeperPB.MetaRegionServer.newBuilder()
             .mergeFrom(data, offset, data.length - offset).build();
           ip = getIP(meta.getServer().getHostName());
           port = meta.getServer().getPort();
@@ -3421,8 +3462,14 @@ public final class HBaseClient {
           return null;  // TODO(tsuna): Add a watch to wait until the file changes.
         }
 
-        LOG.info("Connecting to .META. region @ " + ip + ':' + port);
-        has_root = false;
+        is_hbase96 = true;
+        has_root = meta.hasIsRoot() ? meta.getIsRoot() : false;
+        if(has_root) {
+          LOG.info("Connecting to hbase:root region @ " + ip + ':' + port);
+        } else {
+          LOG.info("Connecting to hbase:meta region @ " + ip + ':' + port);
+        }
+        //has_root = false;
         final RegionClient client = rootregion = newClient(ip, port);
         return client;
       }

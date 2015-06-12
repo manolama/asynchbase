@@ -1019,7 +1019,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
       LOG.info("Initialized security helper: " + secure_rpc_helper + 
           " for region client: " + this);
     } else {
-      if (!hbase_client.has_root) {
+      if (!hbase_client.has_root || hbase_client.is_hbase96) {
         if (hbase_client.getConfig().getBoolean("hbase.security.auth.enable")) {
           secure_rpc_helper = new SecureRpcHelper96(hbase_client, this, 
               chan.getRemoteAddress());
