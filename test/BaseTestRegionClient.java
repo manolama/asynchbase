@@ -31,17 +31,15 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.mock;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelConfig;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DefaultChannelConfig;
 
 import java.util.Map;
 
 import org.hbase.async.generated.RPCPB;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelConfig;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.DefaultChannelConfig;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -59,7 +57,7 @@ import org.powermock.reflect.Whitebox;
 @PowerMockIgnore({"javax.management.*", "javax.xml.*",
            "ch.qos.*", "org.slf4j.*",
            "com.sum.*", "org.xml.*"})
-@PrepareForTest({ HBaseClient.class, RegionClient.class, Channels.class,
+@PrepareForTest({ HBaseClient.class, RegionClient.class, 
   RPCPB.ResponseHeader.class, NotServingRegionException.class, Config.class,
   RegionInfo.class, RPCPB.ExceptionResponse.class, HBaseRpc.class, 
   SecureRpcHelper.class })
@@ -76,7 +74,6 @@ public class BaseTestRegionClient {
   protected HBaseRpc rpc = mock(HBaseRpc.class);
   protected Channel chan;
   protected ChannelHandlerContext ctx;
-  protected ChannelStateEvent cse;
   protected HBaseClient hbase_client;
   protected Config config;
   protected Map<Integer, HBaseRpc> rpcs_inflight;
@@ -91,12 +88,11 @@ public class BaseTestRegionClient {
     
     chan = mock(Channel.class, Mockito.RETURNS_DEEP_STUBS);
     ctx = mock(ChannelHandlerContext.class);
-    cse = mock(ChannelStateEvent.class);
     secure_rpc_helper = mock(SecureRpcHelper.class);
     
-    final ChannelConfig channel_config = new DefaultChannelConfig();
-    when(chan.getConfig()).thenReturn(channel_config);
-    when(ctx.getChannel()).thenReturn(chan);
+    final ChannelConfig channel_config = new DefaultChannelConfig(chan);
+    when(chan.config()).thenReturn(channel_config);
+    when(ctx.channel()).thenReturn(chan);
     
     PowerMockito.doAnswer(new Answer<RegionClient>(){
       @Override
@@ -125,12 +121,12 @@ public class BaseTestRegionClient {
     Whitebox.setInternalState(region_client, "secure_rpc_helper", secure_rpc_helper);
 
     when(secure_rpc_helper
-        .handleResponse(any(ChannelBuffer.class), any(Channel.class)))
-        .thenAnswer(new Answer<ChannelBuffer>() {
+        .handleResponse(any(ByteBuf.class), any(Channel.class)))
+        .thenAnswer(new Answer<ByteBuf>() {
           @Override
-          public ChannelBuffer answer(final InvocationOnMock args)
+          public ByteBuf answer(final InvocationOnMock args)
               throws Throwable {
-            return (ChannelBuffer)args.getArguments()[0];
+            return (ByteBuf)args.getArguments()[0];
           }
     });
   }

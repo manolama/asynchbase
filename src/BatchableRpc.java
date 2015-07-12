@@ -26,7 +26,7 @@
  */
 package org.hbase.async;
 
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 
 import org.hbase.async.generated.ClientPB.MutationProto;
 
@@ -168,6 +168,6 @@ abstract class BatchableRpc extends HBaseRpc
   /**
    * Serialize the part of this RPC for a {@link MultiAction}.
    */
-  abstract void serializePayload(final ChannelBuffer buf);
+  abstract void serializePayload(final ByteBuf buf);
 
 }

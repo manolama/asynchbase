@@ -44,8 +44,6 @@ import javax.security.sasl.SaslException;
 import org.hbase.async.auth.KerberosClientAuthProvider;
 import org.hbase.async.auth.MockProvider;
 import org.hbase.async.auth.SimpleClientAuthProvider;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
 import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -135,7 +133,7 @@ public class TestSecureRpcHelper extends BaseTestSecureRpcHelper {
     config.overrideConfig(SecureRpcHelper.RPC_QOP_KEY, "derp");
     new UTHelper(client, region_client, remote_endpoint);
   }
-
+/*
   @Test
   public void unwrap() throws Exception {
     setupUnwrap();
@@ -209,7 +207,7 @@ public class TestSecureRpcHelper extends BaseTestSecureRpcHelper {
     final UTHelper helper = new UTHelper(client, region_client, remote_endpoint);
     helper.wrap(buf);
   }
-  
+*/  
   @Test
   public void processChallenge() throws Exception {
     setupChallenge();

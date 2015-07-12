@@ -32,6 +32,9 @@ import static org.mockito.Matchers.anyMap;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -43,9 +46,6 @@ import javax.security.sasl.SaslClient;
 import org.hbase.async.auth.ClientAuthProvider;
 import org.hbase.async.auth.KerberosClientAuthProvider;
 import org.hbase.async.auth.Login;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
@@ -97,7 +97,7 @@ public class BaseTestSecureRpcHelper {
    */
   protected class UTHelper extends SecureRpcHelper {
     Channel chan;
-    ChannelBuffer buffer;    
+    ByteBuf buffer;    
     public UTHelper(final HBaseClient hbase_client, final RegionClient region_client,
         final SocketAddress remote_endpoint) {
       super(hbase_client, region_client, remote_endpoint);
@@ -109,7 +109,7 @@ public class BaseTestSecureRpcHelper {
     }
 
     @Override
-    public ChannelBuffer handleResponse(ChannelBuffer buf, Channel chan) {
+    public ByteBuf handleResponse(ByteBuf buf, Channel chan) {
       this.chan = chan;
       buffer = buf;
       return buf;
@@ -141,11 +141,11 @@ public class BaseTestSecureRpcHelper {
    * @param payload The payload to wrap
    * @return A channel buffer for testing
    */
-  protected ChannelBuffer getBuffer(final byte[] payload) {
+  protected ByteBuf getBuffer(final byte[] payload) {
     final byte[] buf = new byte[payload.length + 4];
     System.arraycopy(payload, 0, buf, 4, payload.length);
     Bytes.setInt(buf, payload.length);
-    return ChannelBuffers.wrappedBuffer(buf);
+    return Unpooled.wrappedBuffer(buf);
   }
   
   /**

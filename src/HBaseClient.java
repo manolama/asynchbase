@@ -54,17 +54,17 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.jboss.netty.channel.ChannelEvent;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.DefaultChannelPipeline;
-import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
-import org.jboss.netty.channel.socket.SocketChannel;
-import org.jboss.netty.channel.socket.SocketChannelConfig;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timeout;
-import org.jboss.netty.util.Timer;
-import org.jboss.netty.util.TimerTask;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
+import io.netty.util.Timer;
+import io.netty.util.TimerTask;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,7 +251,7 @@ public final class HBaseClient {
   /**
    * Factory through which we will create all its channels / sockets.
    */
-  private final ClientSocketChannelFactory channel_factory;
+  private final EventLoopGroup group;
 
   /** Watcher to keep track of the -ROOT- region in ZooKeeper.  */
   private final ZKClient zkclient;
@@ -463,34 +463,7 @@ public final class HBaseClient {
    * -ROOT- region.
    */
   public HBaseClient(final String quorum_spec, final String base_path) {
-    this(quorum_spec, base_path, defaultChannelFactory());
-  }
-
-  /**
-   * Constructor for advanced users with special needs.
-   * <p>
-   * <strong>NOTE:</strong> Only advanced users who really know what they're
-   * doing should use this constructor.  Passing an inappropriate thread
-   * pool, or blocking its threads will prevent this {@code HBaseClient}
-   * from working properly or lead to poor performance.
-   * @param quorum_spec The specification of the quorum, e.g.
-   * {@code "host1,host2,host3"}.
-   * @param base_path The base path under which is the znode for the
-   * -ROOT- region.
-   * @param executor The executor from which to obtain threads for NIO
-   * operations.  It is <strong>strongly</strong> encouraged to use a
-   * {@link Executors#newCachedThreadPool} or something equivalent unless
-   * you're sure to understand how Netty creates and uses threads.
-   * Using a fixed-size thread pool will not work the way you expect.
-   * <p>
-   * Note that calling {@link #shutdown} on this client will <b>NOT</b>
-   * shut down the executor.
-   * @see NioClientSocketChannelFactory
-   * @since 1.2
-   */
-  public HBaseClient(final String quorum_spec, final String base_path,
-                     final Executor executor) {
-    this(quorum_spec, base_path, new CustomChannelFactory(executor));
+    this(quorum_spec, base_path, defaultEventGroup());
   }
 
   /**
@@ -508,8 +481,8 @@ public final class HBaseClient {
    * @since 1.2
    */
   public HBaseClient(final String quorum_spec, final String base_path,
-                     final ClientSocketChannelFactory channel_factory) {
-    this.channel_factory = channel_factory;
+                     final EventLoopGroup group) {
+    this.group = group;
     zkclient = new ZKClient(quorum_spec, base_path);
     config = new Config();
     timer = new HashedWheelTimer(config.getShort("hbase.timer.tick"), 
@@ -523,27 +496,7 @@ public final class HBaseClient {
    * @since 1.7
    */
   public HBaseClient(final Config config) {
-    this(config, defaultChannelFactory());
-  }
-  
-  /**
-   * Constructor accepting a configuration object with at least the 
-   * "asynchbase.zk.quorum" specified in the format {@code "host1,host2,host3"}
-   * and an executor thread pool.
-   * @param config A configuration object
-   * @param The executor from which to obtain threads for NIO
-   * operations.  It is <strong>strongly</strong> encouraged to use a
-   * {@link Executors#newCachedThreadPool} or something equivalent unless
-   * you're sure to understand how Netty creates and uses threads.
-   * Using a fixed-size thread pool will not work the way you expect.
-   * <p>
-   * Note that calling {@link #shutdown} on this client will <b>NOT</b>
-   * shut down the executor.
-   * @see NioClientSocketChannelFactory
-   * @since 1.7
-   */
-  public HBaseClient(final Config config, final Executor executor) {
-    this(config, new CustomChannelFactory(executor));
+    this(config, defaultEventGroup());
   }
   
   /**
@@ -560,8 +513,8 @@ public final class HBaseClient {
    * @since 1.7
    */
   public HBaseClient(final Config config, 
-      final ClientSocketChannelFactory channel_factory) {
-    this.channel_factory = channel_factory;
+      final EventLoopGroup group) {
+    this.group = group;
     zkclient = new ZKClient(config.getString("hbase.zookeeper.quorum"), 
         config.getString("hbase.zookeeper.znode.parent"));
     this.config = config;
@@ -569,23 +522,22 @@ public final class HBaseClient {
         MILLISECONDS);
   }
   
-  /** Creates a default channel factory in case we haven't been given one.  */
-  private static NioClientSocketChannelFactory defaultChannelFactory() {
-    final Executor executor = Executors.newCachedThreadPool();
-    return new NioClientSocketChannelFactory(executor, executor);
+  /** Creates a default NIO Event loop group in case we haven't been given one.  */
+  private static EventLoopGroup defaultEventGroup() {
+    return new NioEventLoopGroup();
   }
 
   /** A custom channel factory that doesn't shutdown its executor.  */
-  private static final class CustomChannelFactory
-    extends NioClientSocketChannelFactory {
-      CustomChannelFactory(final Executor executor) {
-        super(executor, executor);
-      }
-      @Override
-      public void releaseExternalResources() {
-        // Do nothing, we don't want to shut down the executor.
-      }
-  }
+//  private static final class CustomChannelFactory
+//    extends NioClientSocketChannelFactory {
+//      CustomChannelFactory(final Executor executor) {
+//        super(executor, executor);
+//      }
+//      @Override
+//      public void releaseExternalResources() {
+//        // Do nothing, we don't want to shut down the executor.
+//      }
+//  }
 
   /**
    * Returns a snapshot of usage statistics for this client.
@@ -896,7 +848,8 @@ public final class HBaseClient {
       }
       public void run() {
         // This terminates the Executor.
-        channel_factory.releaseExternalResources();
+        // TODO - future and join
+        group.shutdownGracefully();
       }
     };
 
@@ -2761,26 +2714,28 @@ public final class HBaseClient {
       if (client != null && client.isAlive()) {
         return client;
       }
+      final RegionClientInitializer initializer = new RegionClientInitializer(this);
+      client = initializer.region_client;
+      Bootstrap b = new Bootstrap()
+        .group(group)
+        .channel(NioSocketChannel.class)
+        .handler(initializer);
+      
+      b.connect(host, port);
 
-      // We don't use Netty's ClientBootstrap class because it makes it
-      // unnecessarily complicated to have control over which ChannelPipeline
-      // exactly will be given to the channel.  It's over-designed.
-      final RegionClientPipeline pipeline = new RegionClientPipeline();
-      client = pipeline.init();
-      chan = channel_factory.newChannel(pipeline);
       ip2client.put(hostport, client);  // This is guaranteed to return null.
     }
     client2regions.put(client, new ArrayList<RegionInfo>());
     num_connections_created.increment();
-    // Configure and connect the channel without locking ip2client.
-    final SocketChannelConfig config = chan.getConfig();
-    config.setConnectTimeoutMillis(5000);
-    config.setTcpNoDelay(true);
-    // Unfortunately there is no way to override the keep-alive timeout in
-    // Java since the JRE doesn't expose any way to call setsockopt() with
-    // TCP_KEEPIDLE.  And of course the default timeout is >2h.  Sigh.
-    config.setKeepAlive(true);
-    chan.connect(new InetSocketAddress(host, port));  // Won't block.
+//    // Configure and connect the channel without locking ip2client.
+//    final SocketChannelConfig config = chan.getConfig();
+//    config.setConnectTimeoutMillis(5000);
+//    config.setTcpNoDelay(true);
+//    // Unfortunately there is no way to override the keep-alive timeout in
+//    // Java since the JRE doesn't expose any way to call setsockopt() with
+//    // TCP_KEEPIDLE.  And of course the default timeout is >2h.  Sigh.
+//    config.setKeepAlive(true);
+//    chan.connect(new InetSocketAddress(host, port));  // Won't block.
     return client;
   }
 
@@ -2796,96 +2751,96 @@ public final class HBaseClient {
    * disconnection events, to which we'd need to pass a callback to invoke
    * to report the event back to the {@link HBaseClient}.
    */
-  private final class RegionClientPipeline extends DefaultChannelPipeline {
-
-    /**
-     * Have we already disconnected?.
-     * We use this to avoid doing the cleanup work for the same client more
-     * than once, even if we get multiple events indicating that the client
-     * is no longer connected to the RegionServer (e.g. DISCONNECTED, CLOSED).
-     * No synchronization needed as this is always accessed from only one
-     * thread at a time (equivalent to a non-shared state in a Netty handler).
-     */
-    private boolean disconnected = false;
-
-    RegionClientPipeline() {
-    }
-
-    /**
-     * Initializes this pipeline.
-     * This method <strong>MUST</strong> be called on each new instance
-     * before it's used as a pipeline for a channel.
-     */
-    RegionClient init() {
-      final RegionClient client = new RegionClient(HBaseClient.this);
-      super.addLast("handler", client);
-      return client;
-    }
-
-    @Override
-    public void sendDownstream(final ChannelEvent event) {
-      //LoggerFactory.getLogger(RegionClientPipeline.class)
-      //  .debug("hooked sendDownstream " + event);
-      if (event instanceof ChannelStateEvent) {
-        handleDisconnect((ChannelStateEvent) event);
-      }
-      super.sendDownstream(event);
-    }
-
-    @Override
-    public void sendUpstream(final ChannelEvent event) {
-      //LoggerFactory.getLogger(RegionClientPipeline.class)
-      //  .debug("hooked sendUpstream " + event);
-      if (event instanceof ChannelStateEvent) {
-        handleDisconnect((ChannelStateEvent) event);
-      }
-      super.sendUpstream(event);
-    }
-
-    private void handleDisconnect(final ChannelStateEvent state_event) {
-      if (disconnected) {
-        return;
-      }
-      switch (state_event.getState()) {
-        case OPEN:
-          if (state_event.getValue() == Boolean.FALSE) {
-            break;  // CLOSED
-          }
-          return;
-        case CONNECTED:
-          if (state_event.getValue() == null) {
-            break;  // DISCONNECTED
-          }
-          return;
-        default:
-          return;  // Not an event we're interested in, ignore it.
-      }
-
-      disconnected = true;  // So we don't clean up the same client twice.
-      try {
-        final RegionClient client = super.get(RegionClient.class);
-        SocketAddress remote = super.getChannel().getRemoteAddress();
-        // At this point Netty gives us no easy way to access the
-        // SocketAddress of the peer we tried to connect to, so we need to
-        // find which entry in the map was used for the rootregion.  This
-        // kinda sucks but I couldn't find an easier way.
-        if (remote == null) {
-          remote = slowSearchClientIP(client);
-        }
-
-        // Prevent the client from buffering requests while we invalidate
-        // everything we have about it.
-        synchronized (client) {
-          removeClientFromCache(client, remote);
-        }
-      } catch (Exception e) {
-        LoggerFactory.getLogger(RegionClientPipeline.class)
-          .error("Uncaught exception when handling a disconnection of "
-                 + getChannel(), e);
-      }
-    }
-
-  }
+//  private final class RegionClientPipeline extends DefaultChannelPipeline {
+//
+//    /**
+//     * Have we already disconnected?.
+//     * We use this to avoid doing the cleanup work for the same client more
+//     * than once, even if we get multiple events indicating that the client
+//     * is no longer connected to the RegionServer (e.g. DISCONNECTED, CLOSED).
+//     * No synchronization needed as this is always accessed from only one
+//     * thread at a time (equivalent to a non-shared state in a Netty handler).
+//     */
+//    private boolean disconnected = false;
+//
+//    RegionClientPipeline() {
+//    }
+//
+//    /**
+//     * Initializes this pipeline.
+//     * This method <strong>MUST</strong> be called on each new instance
+//     * before it's used as a pipeline for a channel.
+//     */
+//    RegionClient init() {
+//      final RegionClient client = new RegionClient(HBaseClient.this);
+//      super.addLast("handler", client);
+//      return client;
+//    }
+//
+//    @Override
+//    public void sendDownstream(final ChannelEvent event) {
+//      //LoggerFactory.getLogger(RegionClientPipeline.class)
+//      //  .debug("hooked sendDownstream " + event);
+//      if (event instanceof ChannelStateEvent) {
+//        handleDisconnect((ChannelStateEvent) event);
+//      }
+//      super.sendDownstream(event);
+//    }
+//
+//    @Override
+//    public void sendUpstream(final ChannelEvent event) {
+//      //LoggerFactory.getLogger(RegionClientPipeline.class)
+//      //  .debug("hooked sendUpstream " + event);
+//      if (event instanceof ChannelStateEvent) {
+//        handleDisconnect((ChannelStateEvent) event);
+//      }
+//      super.sendUpstream(event);
+//    }
+//
+//    private void handleDisconnect(final ChannelStateEvent state_event) {
+//      if (disconnected) {
+//        return;
+//      }
+//      switch (state_event.getState()) {
+//        case OPEN:
+//          if (state_event.getValue() == Boolean.FALSE) {
+//            break;  // CLOSED
+//          }
+//          return;
+//        case CONNECTED:
+//          if (state_event.getValue() == null) {
+//            break;  // DISCONNECTED
+//          }
+//          return;
+//        default:
+//          return;  // Not an event we're interested in, ignore it.
+//      }
+//
+//      disconnected = true;  // So we don't clean up the same client twice.
+//      try {
+//        final RegionClient client = super.get(RegionClient.class);
+//        SocketAddress remote = super.getChannel().getRemoteAddress();
+//        // At this point Netty gives us no easy way to access the
+//        // SocketAddress of the peer we tried to connect to, so we need to
+//        // find which entry in the map was used for the rootregion.  This
+//        // kinda sucks but I couldn't find an easier way.
+//        if (remote == null) {
+//          remote = slowSearchClientIP(client);
+//        }
+//
+//        // Prevent the client from buffering requests while we invalidate
+//        // everything we have about it.
+//        synchronized (client) {
+//          removeClientFromCache(client, remote);
+//        }
+//      } catch (Exception e) {
+//        LoggerFactory.getLogger(RegionClientPipeline.class)
+//          .error("Uncaught exception when handling a disconnection of "
+//                 + getChannel(), e);
+//      }
+//    }
+//
+//  }
 
   /**
    * Performs a slow search of the IP used by the given client.

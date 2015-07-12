@@ -26,9 +26,10 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+
 import java.lang.UnsupportedOperationException;
 
-import org.jboss.netty.buffer.ChannelBuffer;
 import org.hbase.async.generated.FilterPB;
 
 /**
@@ -73,7 +74,7 @@ public final class KeyOnlyFilter extends ScanFilter {
   }
 
   @Override
-  void serializeOld(final ChannelBuffer buf) {
+  void serializeOld(final ByteBuf buf) {
     buf.writeByte((byte) NAME.length);     // 1
     buf.writeBytes(NAME);                  // 44
     buf.writeByte(lenAsVal ? 1 : 0);       // 1

@@ -36,6 +36,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import io.netty.channel.Channel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,10 +49,6 @@ import org.hbase.async.auth.ClientAuthProvider;
 import org.hbase.async.auth.KerberosClientAuthProvider;
 import org.hbase.async.auth.Login;
 import org.hbase.async.auth.SimpleClientAuthProvider;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.Channels;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -70,9 +67,9 @@ import org.powermock.reflect.Whitebox;
   "com.sum.*", "org.xml.*"})
 @PrepareForTest({ HBaseClient.class, Login.class, RegionClient.class,
   SaslClient.class, KerberosClientAuthProvider.class, SecureRpcHelper.class,
-  Subject.class, Channel.class, Channels.class })
+  Subject.class, Channel.class})
 public class TestSecureRpcHelper94 extends BaseTestSecureRpcHelper {
-
+/*
   private Channel channel;
   private List<ChannelBuffer> buffers;
   private SecureRpcHelper94 helper;
@@ -344,7 +341,7 @@ public class TestSecureRpcHelper94 extends BaseTestSecureRpcHelper {
    * @param payload The pyalod to wrap
    * @return A channel buffer for testing
    */
-  protected ChannelBuffer getSaslBuffer(final int rpcid, final int state, 
+/*  protected ChannelBuffer getSaslBuffer(final int rpcid, final int state, 
       final byte[] payload) {
     final byte[] buf = new byte[payload.length + 4 + 4 + 4];
     System.arraycopy(payload, 0, buf, 12, payload.length);
@@ -359,7 +356,7 @@ public class TestSecureRpcHelper94 extends BaseTestSecureRpcHelper {
    * @param username The username to encode
    * @return The byte array to compare against in the unit test
    */
-  private byte[] header094(final String username) {
+/*  private byte[] header094(final String username) {
     final byte[] user_bytes = Bytes.UTF8(username);
     final String klass = "org.apache.hadoop.hbase.ipc.HRegionInterface";
     final byte[] class_bytes = Bytes.UTF8(klass);
@@ -382,5 +379,5 @@ public class TestSecureRpcHelper94 extends BaseTestSecureRpcHelper {
     out_buffer.setInt(0, out_buffer.writerIndex() - 4);
     out_buffer = helper.wrap(out_buffer);
     return out_buffer.array();
-  }
+  }*/
 }

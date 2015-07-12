@@ -40,6 +40,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -55,13 +57,6 @@ import org.hbase.async.generated.ClientPB.GetResponse;
 import org.hbase.async.generated.ClientPB.Result;
 import org.hbase.async.generated.RPCPB;
 import org.hbase.async.generated.RPCPB.CellBlockMeta;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.buffer.ReadOnlyChannelBuffer;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.handler.codec.replay.VoidEnum;
 import org.junit.Test;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -71,25 +66,23 @@ import com.google.protobuf.CodedOutputStream;
 import com.stumbleupon.async.Deferred;
 import com.stumbleupon.async.TimeoutException;
 
-@PrepareForTest({ Channels.class, GetRequest.class, 
-  ChannelHandlerContext.class })
+@PrepareForTest({ GetRequest.class, ChannelHandlerContext.class })
 public class TestRegionClientDecode extends BaseTestRegionClient {
-  private static final VoidEnum VOID = (VoidEnum)null;
-  private static final byte[] ROW = { 0, 0, 1 };
+/*  private static final byte[] ROW = { 0, 0, 1 };
   private static final byte[] FAMILY = { 'n', 'o', 'b' };
   private static final byte[] TABLE = { 'd', 'w' };
   private static final byte[] QUALIFIER = { 'v', 'i', 'm', 'e', 's' };
   private static final byte[] VALUE = { 42 };
   private static final long TIMESTAMP = 1356998400000L;
   
-  // NOTE: the TYPE of ChannelBuffer is important! ReplayingDecoderBuffer isn't
+  // NOTE: the TYPE of ByteBuf is important! ReplayingDecoderBuffer isn't
   // backed by an array and we have methods that attemp to see if they can
   // perform zero copy operations.
   
   @Test
   public void goodGetRequest() throws Exception {
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(false, id);
+    final ByteBuf buffer = buildGoodResponse(false, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -109,7 +102,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   @Test
   public void goodGetRequestArrayBacked() throws Exception {
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -130,7 +123,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void goodGetRequestWithSecurity() throws Exception {
     injectSecurity();
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(false, id);
+    final ByteBuf buffer = buildGoodResponse(false, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -151,7 +144,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void goodGetRequestWithSecurityArrayBacked() throws Exception {
     injectSecurity();
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -172,7 +165,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void goodGetRequestWithSecurityConsumesAll() throws Exception {
     injectSecurity();
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(false, id);
+    final ByteBuf buffer = buildGoodResponse(false, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -195,7 +188,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void goodGetRequestWithSecurityConsumesAllArrayBacked() throws Exception {
     injectSecurity();
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -224,8 +217,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -256,8 +249,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = 
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 });
+    ByteBuf buffer = 
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 });
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -285,12 +278,12 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final int id = 42;
     final GetRequest get = mock(GetRequest.class);
     final Deferred<Object> deferred = get.getDeferred();
-    when(get.deserialize(any(ChannelBuffer.class), anyInt()))
+    when(get.deserialize(any(ByteBuf.class), anyInt()))
       .thenThrow(new TestingHBaseException("Boo!"));
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -317,13 +310,13 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final GetRequest get = PowerMockito.mock(GetRequest.class);
     final NotServingRegionException nsre = 
         new NotServingRegionException("Boo!", get);
-    when(get.deserialize(any(ChannelBuffer.class), anyInt()))
+    when(get.deserialize(any(ByteBuf.class), anyInt()))
       .thenReturn(nsre);
     when(get.getRegion()).thenReturn(region);
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     assertNull(region_client.decode(ctx, chan, buffer, VOID));
 
     assertEquals(0, rpcs_inflight.size());
@@ -338,7 +331,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     resetMockClient();
     
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final byte[] array = new byte[buffer.writerIndex()];
     buffer.readBytes(array);
     
@@ -353,9 +346,9 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[0]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[1]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[2]));
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]));
     
     region_client.messageReceived(ctx, event);
     region_client.messageReceived(ctx, event);
@@ -377,7 +370,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     resetMockClient();
     
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final byte[] array = new byte[buffer.writerIndex()];
     buffer.readBytes(array);
     
@@ -387,7 +380,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(array));
+      .thenReturn(ByteBufs.wrappedBuffer(array));
     
     region_client.messageReceived(ctx, event);
     
@@ -407,7 +400,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     resetMockClient();
     
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final byte[] array = new byte[buffer.writerIndex()];
     buffer.readBytes(array);
     
@@ -421,8 +414,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[0]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[1]));
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]));
     
     RuntimeException e = null;
     try {
@@ -480,12 +473,12 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(Arrays.copyOf(array, 3)))
-      .thenReturn(ChannelBuffers.wrappedBuffer(
+      .thenReturn(ByteBufs.wrappedBuffer(Arrays.copyOf(array, 3)))
+      .thenReturn(ByteBufs.wrappedBuffer(
           Arrays.copyOfRange(array, 3, 6)))
-          .thenReturn(ChannelBuffers.wrappedBuffer(
+          .thenReturn(ByteBufs.wrappedBuffer(
           Arrays.copyOfRange(array, 6, 11)))
-      .thenReturn(ChannelBuffers.wrappedBuffer(
+      .thenReturn(ByteBufs.wrappedBuffer(
           Arrays.copyOfRange(array, 11, array.length)));
     
     region_client.messageReceived(ctx, event);
@@ -539,10 +532,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[0]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[1]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[2]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(pbuf3));
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
+      .thenReturn(ByteBufs.wrappedBuffer(pbuf3));
 
     region_client.messageReceived(ctx, event);
     // we gave netty just a fragment of the first RPC so it will throw an error
@@ -609,10 +602,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[0]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[1]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[2]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(pbuf3));
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
+      .thenReturn(ByteBufs.wrappedBuffer(pbuf3));
 
     region_client.messageReceived(ctx, event);
     // we gave netty just a fragment of the first RPC so it will throw an error
@@ -707,12 +700,12 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     final MessageEvent event = mock(MessageEvent.class);
     when(event.getMessage())
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[0]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[1]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[2]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[3]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[4]))
-      .thenReturn(ChannelBuffers.wrappedBuffer(chunks[5]));
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[3]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[4]))
+      .thenReturn(ByteBufs.wrappedBuffer(chunks[5]));
 
     region_client.messageReceived(ctx, event);
     region_client.messageReceived(ctx, event);
@@ -739,13 +732,13 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final GetRequest get = PowerMockito.mock(GetRequest.class);
     final NotServingRegionException nsre = 
         new NotServingRegionException("Boo!", get);
-    when(get.deserialize(any(ChannelBuffer.class), anyInt()))
+    when(get.deserialize(any(ByteBuf.class), anyInt()))
       .thenReturn(nsre);
     when(get.getRegion()).thenReturn(region);
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = 
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    ByteBuf buffer = 
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
     assertNull(region_client.decode(ctx, chan, buffer, VOID));
 
     assertEquals(0, rpcs_inflight.size());
@@ -760,13 +753,13 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final int id = 42;
     final GetRequest get = PowerMockito.mock(GetRequest.class);
     final RegionMovedException rme = new RegionMovedException("Boo!", get);
-    when(get.deserialize(any(ChannelBuffer.class), anyInt()))
+    when(get.deserialize(any(ByteBuf.class), anyInt()))
       .thenReturn(rme);
     when(get.getRegion()).thenReturn(region);
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     assertNull(region_client.decode(ctx, chan, buffer, VOID));
 
     assertEquals(0, rpcs_inflight.size());
@@ -781,13 +774,13 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final int id = 42;
     final GetRequest get = PowerMockito.mock(GetRequest.class);
     final RegionMovedException rme = new RegionMovedException("Boo!", get);
-    when(get.deserialize(any(ChannelBuffer.class), anyInt()))
+    when(get.deserialize(any(ByteBuf.class), anyInt()))
       .thenReturn(rme);
     when(get.getRegion()).thenReturn(region);
     rpcs_inflight.put(id, get);
     
-    ChannelBuffer buffer = 
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    ByteBuf buffer = 
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
     assertNull(region_client.decode(ctx, chan, buffer, VOID));
 
     assertEquals(0, rpcs_inflight.size());
@@ -801,7 +794,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void eom() throws Exception {
     // we read the whole message some how. Doesn't matter if it's array backed
     // or not in this case.
-    final ChannelBuffer buffer = buildGoodResponse(true, 1);
+    final ByteBuf buffer = buildGoodResponse(true, 1);
     buffer.readerIndex(buffer.writerIndex());
     region_client.decode(ctx, chan, buffer, VOID);
   }
@@ -810,8 +803,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void notReadableInitial() throws Exception {
     // Fails on the first call to ensureReadable because the size encoded
     // in the first 4 bytes is much larger than it should be
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -821,7 +814,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(e instanceof IndexOutOfBoundsException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 });
     e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -836,8 +829,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void negativeSize() throws Exception {
     // Fails on the first call to ensureReadable because the size encoded
     // in the first 4 bytes is much larger than it should be
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -847,7 +840,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(e instanceof IllegalArgumentException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 });
     e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -867,9 +860,9 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     PowerMockito.mockStatic(RegionClient.class);
     PowerMockito.doNothing().when(RegionClient.class, "ensureReadable", 
-        any(ChannelBuffer.class), anyInt());
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 }));
+        any(ByteBuf.class), anyInt());
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -879,7 +872,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(e instanceof IllegalArgumentException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 });
     e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -894,8 +887,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void nothingAfterInitialLength() throws Exception {
     // gets into HBaseRpc.readProtobuf and tosses an exception when it tries
     // to read the varint.
-    final ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 0 }));
+    final ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 0 }));
     region_client.decode(ctx, chan, buffer, VOID);
   }
   
@@ -903,8 +896,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void protobufVarintOnly() throws Exception {
     // gets into HBaseRpc.readProtobuf and tosses an exception when it tries
     // to readBytes on the non-array backed buffer
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -914,7 +907,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(e instanceof IndexOutOfBoundsException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 });
     e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -930,8 +923,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // doesn't matter if the rest of the message is missing, we fail as
     // the ID isn't in the map. It also doesn't matter if it's negative since
     // the ID counter can rollover
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     RuntimeException ex = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -941,8 +934,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(ex instanceof NonRecoverableException);
     
-    buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(
+    buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(
             new byte[] { 0, 0, 0, 1, 6, 8, -42, -1, -1, -1, 15 }));
     ex = null;
     try {
@@ -953,7 +946,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(ex instanceof NonRecoverableException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
     ex = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -963,7 +956,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(ex instanceof NonRecoverableException);
     
-    buffer = ChannelBuffers.wrappedBuffer(
+    buffer = ByteBufs.wrappedBuffer(
         new byte[] { 0, 0, 0, 1, 6, 8, -42, -1, -1, -1, 15 });
     ex = null;
     try {
@@ -979,8 +972,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void noCallId() throws Exception {
     // passes the header parsing since it has a size of zero, but then we check
     // to see if it has a call ID and it won't.
-    ChannelBuffer buffer = new ReadOnlyChannelBuffer(
-        ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 }));
+    ByteBuf buffer = new ReadOnlyByteBuf(
+        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 }));
     RuntimeException e = null;
     try {
       region_client.decode(ctx, chan, buffer, VOID);
@@ -990,7 +983,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     }
     assertTrue(e instanceof NonRecoverableException);
     
-    buffer = ChannelBuffers.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 });
+    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 });
     try {
       region_client.decode(ctx, chan, buffer, VOID);
       fail("Expected an NonRecoverableException");
@@ -1004,7 +997,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void nullContext() throws Exception {
     // just shows we don't care about the context object
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -1024,7 +1017,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void nullChannel() throws Exception {
     // just shows we don't care about the channel either
     final int id = 42;
-    final ChannelBuffer buffer = buildGoodResponse(true, id);
+    final ByteBuf buffer = buildGoodResponse(true, id);
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
@@ -1044,7 +1037,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void emptyBuffer() throws Exception {
     // This shouldn't happen since we should only get a buffer if the socket
     // had some data.
-    final ChannelBuffer buf = ChannelBuffers.wrappedBuffer(new byte[] {});
+    final ByteBuf buf = ByteBufs.wrappedBuffer(new byte[] {});
     region_client.decode(ctx, chan, buf, VOID);
   }
   
@@ -1063,7 +1056,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
    * @return A channel buffer with a ProtoBuf object as HBase would return
    * @throws IOException If we couldn't write the ProtoBuf for some reason
    */
-  private ChannelBuffer buildGoodResponse(final boolean array_backed, final int id)
+/*  private ByteBuf buildGoodResponse(final boolean array_backed, final int id)
       throws IOException {
     final Cell cell = Cell.newBuilder()
         .setRow(Bytes.wrap(ROW))
@@ -1105,9 +1098,9 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     Bytes.setInt(buf, buf.length - 4);
     if (array_backed) {
-      return ChannelBuffers.wrappedBuffer(buf);
+      return ByteBufs.wrappedBuffer(buf);
     } else {
-      return new ReadOnlyChannelBuffer(ChannelBuffers.wrappedBuffer(buf));
+      return new ReadOnlyByteBuf(ByteBufs.wrappedBuffer(buf));
     }
   }
 

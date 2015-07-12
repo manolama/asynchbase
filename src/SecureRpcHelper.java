@@ -26,6 +26,10 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -43,9 +47,6 @@ import org.hbase.async.auth.ClientAuthProvider;
 import org.hbase.async.auth.KerberosClientAuthProvider;
 import org.hbase.async.auth.SimpleClientAuthProvider;
 import org.hbase.async.SecureRpcHelper;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,14 +198,14 @@ public abstract class SecureRpcHelper {
    * @throws IllegalStateException if the sasl client was unable to unwrap
    * the payload
    */
-  public ChannelBuffer unwrap(final ChannelBuffer payload) {
+  public ByteBuf unwrap(final ByteBuf payload) {
     if (!use_wrap) {
       return payload;
     }
 
     final int len = payload.readInt();
     try {
-      final ChannelBuffer unwrapped = ChannelBuffers.wrappedBuffer(
+      final ByteBuf unwrapped = Unpooled.wrappedBuffer(
               sasl_client.unwrap(payload.readBytes(len).array(), 0, len));
       // If encryption was enabled, it's a good bet that you shouldn't log it
       //if (LOG.isDebugEnabled()) {
@@ -225,7 +226,7 @@ public abstract class SecureRpcHelper {
    * @throws IllegalStateException if the sasl client was unable to wrap
    * the payload
    */
-  public ChannelBuffer wrap(final ChannelBuffer content) {
+  public ByteBuf wrap(final ByteBuf content) {
     if (!use_wrap) {
       return content;
     }
@@ -234,7 +235,7 @@ public abstract class SecureRpcHelper {
       final byte[] payload = new byte[content.writerIndex()];
       content.readBytes(payload);
       final byte[] wrapped = sasl_client.wrap(payload, 0, payload.length);
-      final ChannelBuffer ret = ChannelBuffers.wrappedBuffer(
+      final ByteBuf ret = Unpooled.wrappedBuffer(
           new byte[4 + wrapped.length]);
       ret.clear();
       ret.writeInt(wrapped.length);
@@ -266,7 +267,7 @@ public abstract class SecureRpcHelper {
    * @return The possibly unwrapped channel buffer for further decoding. If null
    * then the response was security related.
    */
-  public abstract ChannelBuffer handleResponse(final ChannelBuffer buf, 
+  public abstract ByteBuf handleResponse(final ByteBuf buf, 
       final Channel chan);
 
   /**

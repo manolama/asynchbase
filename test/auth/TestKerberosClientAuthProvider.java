@@ -62,7 +62,7 @@ import org.apache.zookeeper.server.auth.KerberosName;
 import org.hbase.async.Config;
 import org.hbase.async.HBaseClient;
 import org.hbase.async.auth.KerberosClientAuthProvider.ClientCallbackHandler;
-import org.jboss.netty.util.HashedWheelTimer;
+import io.netty.util.HashedWheelTimer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

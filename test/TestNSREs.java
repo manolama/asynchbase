@@ -31,8 +31,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.TimerTask;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.TimerTask;
 
 import com.stumbleupon.async.Deferred;
 

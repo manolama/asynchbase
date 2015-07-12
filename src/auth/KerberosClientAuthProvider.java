@@ -47,7 +47,7 @@ import javax.security.sasl.SaslClient;
 
 import org.apache.zookeeper.server.auth.KerberosName;
 import org.hbase.async.HBaseClient;
-import org.jboss.netty.util.HashedWheelTimer;
+import io.netty.util.HashedWheelTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

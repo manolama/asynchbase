@@ -26,12 +26,12 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+
 import java.net.SocketAddress;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.Channels;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,12 +68,12 @@ class SecureRpcHelper94 extends SecureRpcHelper {
   public void sendHello(final Channel channel) {
     final byte[] connectionHeader = {'s', 'r', 'p', 'c', 4};
     byte[] buf = new byte[4 + 1 + 1];
-    ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(buf);
+    ByteBuf buffer = Unpooled.wrappedBuffer(buf);
     buffer.clear();
     buffer.writeBytes(connectionHeader);
     //code for Kerberos AuthMethod enum in HBaseRPC
     buffer.writeByte(client_auth_provider.getAuthMethodCode());
-    Channels.write(channel, buffer);
+    channel.writeAndFlush(buffer);
 
     // sasl_client is null for Simple Auth case
     if(sasl_client != null)  {
@@ -83,7 +83,7 @@ class SecureRpcHelper94 extends SecureRpcHelper {
       }
       if (challengeBytes != null) {
         buf = new byte[4 + challengeBytes.length];
-        buffer = ChannelBuffers.wrappedBuffer(buf);
+        buffer = Unpooled.wrappedBuffer(buf);
         buffer.clear();
         buffer.writeInt(challengeBytes.length);
         buffer.writeBytes(challengeBytes);
@@ -91,7 +91,7 @@ class SecureRpcHelper94 extends SecureRpcHelper {
         //if (LOG.isDebugEnabled()) {
         //  LOG.debug("Sending initial SASL Challenge: "+Bytes.pretty(buf));
         //}
-        Channels.write(channel, buffer);
+        channel.writeAndFlush(buffer);
       }
     } else {
       sendRPCHeader(channel);
@@ -100,7 +100,7 @@ class SecureRpcHelper94 extends SecureRpcHelper {
   }
 
   @Override
-  public ChannelBuffer handleResponse(ChannelBuffer buf, Channel chan) {
+  public ByteBuf handleResponse(ByteBuf buf, Channel chan) {
     if (sasl_client == null) {
       return buf;
     }
@@ -145,11 +145,11 @@ class SecureRpcHelper94 extends SecureRpcHelper {
         //if (LOG.isDebugEnabled()) {
         //  LOG.debug("Sending SASL response: " + Bytes.pretty(outBytes));
         //}
-        ChannelBuffer outBuffer = ChannelBuffers.wrappedBuffer(outBytes);
+        ByteBuf outBuffer = Unpooled.wrappedBuffer(outBytes);
         outBuffer.clear();
         outBuffer.writeInt(challengeBytes.length);
         outBuffer.writeBytes(challengeBytes);
-        Channels.write(chan, outBuffer);
+        chan.writeAndFlush(outBuffer);
       }
 
       if (sasl_client.isComplete()) {
@@ -172,7 +172,7 @@ class SecureRpcHelper94 extends SecureRpcHelper {
     final byte[] buf = new byte[
                4 + 1 + class_bytes.length + 1 + 2 + user_bytes.length + 1];
 
-    ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(buf);
+    ByteBuf out_buffer = Unpooled.wrappedBuffer(buf);
     out_buffer.clear();
     out_buffer.writerIndex(out_buffer.writerIndex() + 4);
     out_buffer.writeByte(class_bytes.length);              // 1
@@ -191,7 +191,7 @@ class SecureRpcHelper94 extends SecureRpcHelper {
     //if(LOG.isDebugEnabled()) {
     //  LOG.debug("Sending RPC Header: " + Bytes.pretty(out_buffer));
     //}
-    Channels.write(channel, out_buffer);
+    channel.writeAndFlush(out_buffer);
   }
 
 }

@@ -26,19 +26,19 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 import java.util.Comparator;
 import java.util.Arrays;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ByteString;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.hbase.async.generated.HBasePB;
+
 import static org.hbase.async.HBaseClient.EMPTY_ARRAY;
 
 /**
@@ -130,7 +130,7 @@ final class RegionInfo implements Comparable<RegionInfo> {
    */
   private static RegionInfo
   deserializeOldRegionInfo(final KeyValue kv, final byte[][] out_start_key) {
-    final ChannelBuffer buf = ChannelBuffers.wrappedBuffer(kv.value());
+    final ByteBuf buf = Unpooled.wrappedBuffer(kv.value());
     buf.readByte(); // Skip the version.
     // version 1 was introduced in HBase 0.92 (see HBASE-451).
     // The differences between v0 and v1 are irrelevant to us,

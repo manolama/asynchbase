@@ -26,8 +26,9 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+
 import com.google.protobuf.ByteString;
-import org.jboss.netty.buffer.ChannelBuffer;
 
 import org.hbase.async.generated.ComparatorPB;
 
@@ -85,7 +86,7 @@ public abstract class FilterComparator {
    * This method is only used with HBase 0.94 and before.
    * @param buf The RPC channel buffer to which the byte array is serialized
    */
-  void serializeOld(ChannelBuffer buf) {
+  void serializeOld(ByteBuf buf) {
     buf.writeByte(CODE);  // 1
   }
 

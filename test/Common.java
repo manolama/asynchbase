@@ -26,8 +26,8 @@
  */
 package org.hbase.async;
 
-import org.jboss.netty.logging.InternalLoggerFactory;
-import org.jboss.netty.logging.Slf4JLoggerFactory;
+//import org.jboss.netty.logging.InternalLoggerFactory;
+//import org.jboss.netty.logging.Slf4JLoggerFactory;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +36,9 @@ import org.hbase.async.HBaseClient;
 @Ignore // ignore for test runners
 final class Common {
 
-  static {
-    InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory());
-  }
+//  static {
+//    InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory());
+//  }
 
   static Logger logger(final Class<?> klass) {
     return LoggerFactory.getLogger(klass);

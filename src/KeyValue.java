@@ -26,12 +26,9 @@
  */
 package org.hbase.async;
 
+import io.netty.buffer.ByteBuf;
+
 import java.util.Arrays;
-
-import org.jboss.netty.buffer.ChannelBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.hbase.async.generated.CellPB;
 
@@ -232,7 +229,7 @@ public final class KeyValue implements Comparable<KeyValue> {
    * @throws IllegalArgumentException if the buffer seems to contain a
    * malformed {@link KeyValue}.
    */
-  public static KeyValue fromBuffer(final ChannelBuffer buf,
+  public static KeyValue fromBuffer(final ByteBuf buf,
                                     final KeyValue prev) {
     final int rowkey_length = buf.readInt();  // Total length of the row key.
     //LOG.debug("rowkey_length="+rowkey_length);
@@ -406,7 +403,7 @@ public final class KeyValue implements Comparable<KeyValue> {
    * @param buf The buffer into which to write the serialized form.
    * @param type What kind of KV (e.g. {@link #PUT} or {@link DELETE_FAMILY}).
    */
-  void serialize(final ChannelBuffer buf, final byte type) {
+  void serialize(final ByteBuf buf, final byte type) {
     serialize(buf, type, timestamp, key, family, qualifier, value);
   }
 
@@ -444,7 +441,7 @@ public final class KeyValue implements Comparable<KeyValue> {
    * @param type What kind of KV (e.g. {@link #PUT} or {@link DELETE_FAMILY}).
    * @param timestamp The timestamp to put on the KV.
    */
-  static void serialize(final ChannelBuffer buf,
+  static void serialize(final ByteBuf buf,
                         final byte type,
                         final long timestamp,
                         final byte[] key,
