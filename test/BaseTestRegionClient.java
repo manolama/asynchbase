@@ -32,6 +32,8 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelConfig;
 import io.netty.channel.ChannelHandlerContext;
@@ -94,6 +96,15 @@ public class BaseTestRegionClient {
     when(chan.config()).thenReturn(channel_config);
     when(ctx.channel()).thenReturn(chan);
     
+    ByteBufAllocator buf_allocator = mock(ByteBufAllocator.class);
+    when(buf_allocator.buffer(anyInt())).thenAnswer(new Answer<ByteBuf>() {
+      @Override
+      public ByteBuf answer(InvocationOnMock invocation) throws Throwable {
+        return Unpooled.buffer((Integer)invocation.getArguments()[0]);
+      }
+    });
+    when(ctx.alloc()).thenReturn(buf_allocator);
+
     PowerMockito.doAnswer(new Answer<RegionClient>(){
       @Override
       public RegionClient answer(InvocationOnMock invocation) throws Throwable {

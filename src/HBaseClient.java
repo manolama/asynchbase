@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -56,6 +57,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -64,6 +66,8 @@ import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timeout;
 import io.netty.util.Timer;
 import io.netty.util.TimerTask;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.FutureListener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -843,13 +847,25 @@ public final class HBaseClient {
     // to fix this so as a workaround we always shut Netty's thread pool
     // down from another thread.
     final class ShutdownThread extends Thread {
+      Deferred<Object> deferred = new Deferred<Object>();
+      
       ShutdownThread() {
         super("HBaseClient@" + HBaseClient.super.hashCode() + " shutdown");
       }
+      
+      class ShutdownCB implements FutureListener {
+        @Override
+        public void operationComplete(Future arg0) throws Exception {
+          if (!arg0.isSuccess()) {
+            LOG.error("Failed shutdown: ", arg0.cause());
+          }
+          deferred.callback(null);
+        }
+      }
+      
       public void run() {
         // This terminates the Executor.
-        // TODO - future and join
-        group.shutdownGracefully();
+        group.shutdownGracefully().addListener(new ShutdownCB());
       }
     };
 
@@ -858,8 +874,9 @@ public final class HBaseClient {
       public Object call(final Object arg) {
         LOG.debug("Releasing all remaining resources");
         timer.stop();
-        new ShutdownThread().start();
-        return arg;
+        final ShutdownThread t = new ShutdownThread();
+        t.start();
+        return t.deferred;
       }
       public String toString() {
         return "release resources callback";
@@ -2842,6 +2859,29 @@ public final class HBaseClient {
 //
 //  }
 
+  void disconnectRegionClient(final RegionClient client, final Channel ch) {
+    try {
+      SocketAddress remote = ch.remoteAddress();
+      // At this point Netty gives us no easy way to access the
+      // SocketAddress of the peer we tried to connect to, so we need to
+      // find which entry in the map was used for the rootregion.  This
+      // kinda sucks but I couldn't find an easier way.
+      if (remote == null) {
+        remote = slowSearchClientIP(client);
+      }
+    
+      // Prevent the client from buffering requests while we invalidate
+      // everything we have about it.
+      synchronized (client) {
+        removeClientFromCache(client, remote);
+      }
+    } catch (Exception e) {
+      LOG.error("Uncaught exception when handling a disconnection of "
+               + ch, e);
+    }
+
+  }
+  
   /**
    * Performs a slow search of the IP used by the given client.
    * <p>

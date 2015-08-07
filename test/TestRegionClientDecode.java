@@ -41,7 +41,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ReadOnlyByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.DecoderException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -50,6 +53,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.security.sasl.SaslClient;
+import javax.xml.bind.DatatypeConverter;
 
 import org.hbase.async.auth.SimpleClientAuthProvider;
 import org.hbase.async.generated.CellPB.Cell;
@@ -68,7 +72,7 @@ import com.stumbleupon.async.TimeoutException;
 
 @PrepareForTest({ GetRequest.class, ChannelHandlerContext.class })
 public class TestRegionClientDecode extends BaseTestRegionClient {
-/*  private static final byte[] ROW = { 0, 0, 1 };
+  private static final byte[] ROW = { 0, 0, 1 };
   private static final byte[] FAMILY = { 'n', 'o', 'b' };
   private static final byte[] TABLE = { 'd', 'w' };
   private static final byte[] QUALIFIER = { 'v', 'i', 'm', 'e', 's' };
@@ -87,7 +91,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
     assertEquals(1, kvs.size());
@@ -107,7 +111,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
     assertEquals(1, kvs.size());
@@ -128,7 +132,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
     assertEquals(1, kvs.size());
@@ -149,7 +153,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
     assertEquals(1, kvs.size());
@@ -172,7 +176,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     when(secure_rpc_helper.handleResponse(buffer, chan)).thenReturn(null);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     
     Exception e = null;
     try {
@@ -195,7 +199,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     when(secure_rpc_helper.handleResponse(buffer, chan)).thenReturn(null);
     
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+    region_client.decode(ctx, buffer, null);
     
     Exception e = null;
     try {
@@ -218,10 +222,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (NonRecoverableException ex) {
       e = ex;
@@ -250,10 +254,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = 
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 });
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 3, 2, 8, 42 });
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (NonRecoverableException ex) {
       e = ex;
@@ -283,10 +287,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a HBaseException");
     } catch (HBaseException ex) {
       e = ex;
@@ -316,8 +320,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    region_client.decode(ctx, buffer, null);
 
     assertEquals(0, rpcs_inflight.size());
     verify(hbase_client, times(1))
@@ -343,16 +347,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     chunks[0] = Arrays.copyOf(array, 3);
     chunks[1] = Arrays.copyOfRange(array, 3, 10);
     chunks[2] = Arrays.copyOfRange(array, 10, array.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]));
-    
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
+
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[0]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[1]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[2]));
     
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.join(100);
@@ -377,13 +375,9 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final GetRequest get = new GetRequest(TABLE, ROW);
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(array));
-    
-    region_client.messageReceived(ctx, event);
-    
+
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(array));
+
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.join(100);
     assertEquals(1, kvs.size());
@@ -411,26 +405,23 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final byte[][] chunks = new byte[2][];
     chunks[0] = Arrays.copyOf(array, 3);
     chunks[1] = Arrays.copyOfRange(array, 10, array.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]));
-    
+
     RuntimeException e = null;
     try {
-      region_client.messageReceived(ctx, event);
+      region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[0]));
     } catch (RuntimeException ex) {
       e = ex;
     }
     assertNull(e);
 
     try {
-      region_client.messageReceived(ctx, event);
+      region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[1]));
     } catch (RuntimeException ex) {
       e = ex;
     }
-    assertTrue(e instanceof InvalidResponseException);
+    System.out.println(e);
+    // TODO - used to be org.hbase.async.InvalidResponseException
+    assertTrue(e instanceof DecoderException);
 
     try {
       deferred.join(100);
@@ -470,21 +461,11 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final byte[][] chunks = new byte[2][];
     chunks[0] = Arrays.copyOf(array, 3);
     chunks[1] = Arrays.copyOfRange(array, 10, array.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(Arrays.copyOf(array, 3)))
-      .thenReturn(ByteBufs.wrappedBuffer(
-          Arrays.copyOfRange(array, 3, 6)))
-          .thenReturn(ByteBufs.wrappedBuffer(
-          Arrays.copyOfRange(array, 6, 11)))
-      .thenReturn(ByteBufs.wrappedBuffer(
-          Arrays.copyOfRange(array, 11, array.length)));
-    
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
+
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOf(array, 3)));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOfRange(array, 3, 6)));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOfRange(array, 6, 11)));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOfRange(array, 11, array.length)));
     
     RuntimeException e = null;
     try {
@@ -529,26 +510,19 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     len = pbuf2.length - (pbuf2.length / 2);
     chunks[2] = Arrays.copyOfRange(pbuf2, pbuf2.length / 2, pbuf2.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
-      .thenReturn(ByteBufs.wrappedBuffer(pbuf3));
 
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[0]));
     // we gave netty just a fragment of the first RPC so it will throw an error
 
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[1]));
     // now netty has the full RPC1 AND a chunk of RPC2. We'll parse all of RPC1
     // and replay to get the next chunk of 2
     
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[2]));
     // at this point we have read all of the data from the buffer so Netty will
     // discard it
     
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(pbuf3));
     
     for (final Deferred<Object> deferred : deferreds) {
       @SuppressWarnings("unchecked")
@@ -599,33 +573,27 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     len = pbuf2.length - (pbuf2.length / 2);
     chunks[2] = Arrays.copyOfRange(pbuf2, pbuf2.length / 2, pbuf2.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
-      .thenReturn(ByteBufs.wrappedBuffer(pbuf3));
 
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[0]));
     // we gave netty just a fragment of the first RPC so it will throw an error
 
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[1]));
     // now netty has the full RPC1 AND a chunk of RPC2. We'll parse all of RPC1
     // and replay the rest 
 
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[2]));
     // because our corrupted RPC is missing a little bit of data at the end 
     // we will proceed to replay
     
     RuntimeException ex = null;
     try {
-      region_client.messageReceived(ctx, event);
+      region_client.channelRead(ctx, Unpooled.wrappedBuffer(pbuf3));
       fail("Expected an InvalidResponseException");
     } catch (RuntimeException e) {
       ex = e;
     }
-    assertTrue(ex instanceof InvalidResponseException);
+ // TODO - used to be org.hbase.async.InvalidResponseException
+    assertTrue(ex instanceof DecoderException);
 
     // Make sure the first RPC was called back
     List<KeyValue> kvs = (List<KeyValue>)deferreds.get(0).join(100);
@@ -697,22 +665,13 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     len = pbuf3.length / 2;
     chunks[4] = Arrays.copyOfRange(pbuf3, 0, len);
     chunks[5] = Arrays.copyOfRange(pbuf3, len, pbuf3.length);
-    
-    final MessageEvent event = mock(MessageEvent.class);
-    when(event.getMessage())
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[0]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[1]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[2]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[3]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[4]))
-      .thenReturn(ByteBufs.wrappedBuffer(chunks[5]));
 
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
-    region_client.messageReceived(ctx, event);
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[0]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[1]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[2]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[3]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[4]));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(chunks[5]));
     
     for (final Deferred<Object> deferred : deferreds) {
       @SuppressWarnings("unchecked")
@@ -738,8 +697,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = 
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    region_client.decode(ctx, buffer, null);
 
     assertEquals(0, rpcs_inflight.size());
     verify(hbase_client, times(1))
@@ -759,8 +718,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+    region_client.decode(ctx, buffer, null);
 
     assertEquals(0, rpcs_inflight.size());
     verify(hbase_client, times(1))
@@ -780,8 +739,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     rpcs_inflight.put(id, get);
     
     ByteBuf buffer = 
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
-    assertNull(region_client.decode(ctx, chan, buffer, VOID));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    region_client.decode(ctx, buffer, null);
 
     assertEquals(0, rpcs_inflight.size());
     verify(hbase_client, times(1))
@@ -796,7 +755,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // or not in this case.
     final ByteBuf buffer = buildGoodResponse(true, 1);
     buffer.readerIndex(buffer.writerIndex());
-    region_client.decode(ctx, chan, buffer, VOID);
+    region_client.decode(ctx, buffer, null);
   }
   
   @Test
@@ -804,20 +763,20 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // Fails on the first call to ensureReadable because the size encoded
     // in the first 4 bytes is much larger than it should be
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IndexOutOfBoundsException");
     } catch (IndexOutOfBoundsException oob) {
       e = oob;
     }
     assertTrue(e instanceof IndexOutOfBoundsException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 42, 1 });
     e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IndexOutOfBoundsException");
     } catch (IndexOutOfBoundsException oob) {
       e = oob;
@@ -830,20 +789,20 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // Fails on the first call to ensureReadable because the size encoded
     // in the first 4 bytes is much larger than it should be
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 }));
+        Unpooled.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IllegalArgumentException");
     } catch (IllegalArgumentException ex) {
       e = ex;
     }
     assertTrue(e instanceof IllegalArgumentException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { -1, -1, -1, -1, 1 });
     e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IllegalArgumentException");
     } catch (IllegalArgumentException ex) {
       e = ex;
@@ -862,20 +821,20 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     PowerMockito.doNothing().when(RegionClient.class, "ensureReadable", 
         any(ByteBuf.class), anyInt());
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 }));
+        Unpooled.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IllegalArgumentException");
     } catch (IllegalArgumentException ex) {
       e = ex;
     }
     assertTrue(e instanceof IllegalArgumentException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { 16, 0, 0, 0, 1 });
     e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IllegalArgumentException");
     } catch (IllegalArgumentException ex) {
       e = ex;
@@ -888,8 +847,8 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // gets into HBaseRpc.readProtobuf and tosses an exception when it tries
     // to read the varint.
     final ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 0 }));
-    region_client.decode(ctx, chan, buffer, VOID);
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 0 }));
+    region_client.decode(ctx, buffer, null);
   }
   
   @Test
@@ -897,20 +856,20 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // gets into HBaseRpc.readProtobuf and tosses an exception when it tries
     // to readBytes on the non-array backed buffer
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IndexOutOfBoundsException");
     } catch (IndexOutOfBoundsException oob) {
       e = oob;
     }
     assertTrue(e instanceof IndexOutOfBoundsException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 1 });
     e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an IndexOutOfBoundsException");
     } catch (IndexOutOfBoundsException oob) {
       e = oob;
@@ -924,10 +883,10 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // the ID isn't in the map. It also doesn't matter if it's negative since
     // the ID counter can rollover
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 }));
     RuntimeException ex = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (RuntimeException e) {
       ex = e;
@@ -935,32 +894,32 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     assertTrue(ex instanceof NonRecoverableException);
     
     buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(
+        Unpooled.wrappedBuffer(
             new byte[] { 0, 0, 0, 1, 6, 8, -42, -1, -1, -1, 15 }));
     ex = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (RuntimeException e) {
       ex = e;
     }
     assertTrue(ex instanceof NonRecoverableException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 2, 8, 42 });
     ex = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (RuntimeException e) {
       ex = e;
     }
     assertTrue(ex instanceof NonRecoverableException);
     
-    buffer = ByteBufs.wrappedBuffer(
+    buffer = Unpooled.wrappedBuffer(
         new byte[] { 0, 0, 0, 1, 6, 8, -42, -1, -1, -1, 15 });
     ex = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected a NonRecoverableException");
     } catch (RuntimeException e) {
       ex = e;
@@ -973,19 +932,19 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     // passes the header parsing since it has a size of zero, but then we check
     // to see if it has a call ID and it won't.
     ByteBuf buffer = new ReadOnlyByteBuf(
-        ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 }));
+        Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 }));
     RuntimeException e = null;
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an NonRecoverableException");
     } catch (NonRecoverableException ex) {
       e = ex;
     }
     assertTrue(e instanceof NonRecoverableException);
     
-    buffer = ByteBufs.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 });
+    buffer = Unpooled.wrappedBuffer(new byte[] { 0, 0, 0, 1, 0 });
     try {
-      region_client.decode(ctx, chan, buffer, VOID);
+      region_client.decode(ctx, buffer, null);
       fail("Expected an NonRecoverableException");
     } catch (NonRecoverableException ex) {
       e = ex;
@@ -1002,27 +961,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     final Deferred<Object> deferred = get.getDeferred();
     rpcs_inflight.put(id, get);
     
-    region_client.decode(null, chan, buffer, VOID);
-    @SuppressWarnings("unchecked")
-    final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
-    assertEquals(1, kvs.size());
-    assertArrayEquals(ROW, kvs.get(0).key());
-    assertArrayEquals(FAMILY, kvs.get(0).family());
-    assertArrayEquals(QUALIFIER, kvs.get(0).qualifier());
-    assertArrayEquals(VALUE, kvs.get(0).value());
-    assertEquals(TIMESTAMP, kvs.get(0).timestamp());
-  }
-  
-  @Test
-  public void nullChannel() throws Exception {
-    // just shows we don't care about the channel either
-    final int id = 42;
-    final ByteBuf buffer = buildGoodResponse(true, id);
-    final GetRequest get = new GetRequest(TABLE, ROW);
-    final Deferred<Object> deferred = get.getDeferred();
-    rpcs_inflight.put(id, get);
-    
-    region_client.decode(ctx, null, buffer, VOID);
+    region_client.decode(null, buffer, null);
     @SuppressWarnings("unchecked")
     final List<KeyValue> kvs = (List<KeyValue>)deferred.joinUninterruptibly();
     assertEquals(1, kvs.size());
@@ -1037,16 +976,34 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
   public void emptyBuffer() throws Exception {
     // This shouldn't happen since we should only get a buffer if the socket
     // had some data.
-    final ByteBuf buf = ByteBufs.wrappedBuffer(new byte[] {});
-    region_client.decode(ctx, chan, buf, VOID);
+    final ByteBuf buf = Unpooled.wrappedBuffer(new byte[] {});
+    region_client.decode(ctx, buf, null);
   }
   
   @Test (expected = NullPointerException.class)
   public void nullBuffer() throws Exception {
     // This should never happen, in theory
-    region_client.decode(ctx, chan, null, VOID);
+    region_client.decode(ctx, null, null);
   }
 
+  @Test
+  public void scratch() throws Exception {
+
+    byte[] pkg = stringToBytes("0000000c0408d0e808060a0410001800000008f90408d4e808f2110a060a04080012000a0c0a04080112000a04080212000a060a04080312000a060a04080412000a060a04080512000a120a04080612000a04080712000a04080812000a060a04080912000a060a04080a12000a060a04080b12000a060a04080c12000a060a04080d12000a060a04080e12000a060a04080f12000a060a04081012000a060a04081112000a060a04081212000a060a04081312000a0c0a04081412000a04081512000a060a04081612000a0c0a04081712000a04081812000a060a04081912000a060a04081a12000a060a04081b12000a060a04081c12000a060a04081d12000a120a04081e12000a04081f12000a04082012000a060a04082112000a060a04082212000a060a04082312000a060a04082412000ae10712de070a316f72672e6170616368652e6861646f6f702e68626173652e4e6f7453657276696e67526567696f6e457863657074696f6e12a8076f72672e6170616368652e6861646f6f702e68626173652e4e6f7453657276696e67526567696f6e457863657074696f6e3a20526567696f6e2079616d61733a747364622c5c7831325c784243265c7843415c784237552c5c7844372c313433313434323137373635392e31306165653439303033363638383163333631353966633138346466646233612e206973206e6f74206f6e6c696e65206f6e20677372643236326e33342e7265642e79677269642e7961686f6f2e636f6d2c35303531312c313433363537333739393232330a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e676574526567696f6e4279456e636f6465644e616d652848526567696f6e5365727665722e6a6176613a32393031290a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e676574526567696f6e2848526567696f6e5365727665722e6a6176613a34343131290a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e6d756c74692848526567696f6e5365727665722e6a6176613a33363234290a096174206f72672e6170616368652e6861646f6f702e68626173652e70726f746f6275662e67656e6572617465642e436c69656e7450726f746f7324436c69656e745365727669636524322e63616c6c426c6f636b696e674d6574686f6428436c69656e7450726f746f732e6a6176613a3239363039290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270635365727665722e63616c6c285270635365727665722e6a6176613a32313534290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e43616c6c52756e6e65722e72756e2843616c6c52756e6e65722e6a6176613a313038290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270634578656375746f722e636f6e73756d65724c6f6f70285270634578656375746f722e6a6176613a313134290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270634578656375746f7224312e72756e285270634578656375746f722e6a6176613a3934290a096174206a6176612e6c616e672e5468726561642e72756e285468726561642e6a6176613a373232290a0ae10712de070a316f72672e6170616368652e6861646f6f702e68626173652e4e6f7453657276696e67526567696f6e457863657074696f6e12a8076f72672e6170616368652e6861646f6f702e68626173652e4e6f7453657276696e67526567696f6e457863657074696f6e3a20526567696f6e2079616d61733a747364622c5c7831325c7844445c7841305c78413160555f5c7838412c313433363736353839363937382e64383065333930353837636632653832643937643231383134353431353137632e206973206e6f74206f6e6c696e65206f6e20677372643236326e33342e7265642e79677269642e7961686f6f2e636f6d2c35303531312c313433363537333739393232330a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e676574526567696f6e4279456e636f6465644e616d652848526567696f6e5365727665722e6a6176613a32393031290a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e676574526567696f6e2848526567696f6e5365727665722e6a6176613a34343131290a096174206f72672e6170616368652e6861646f6f702e68626173652e726567696f6e7365727665722e48526567696f6e5365727665722e6d756c74692848526567696f6e5365727665722e6a6176613a33363234290a096174206f72672e6170616368652e6861646f6f702e68626173652e70726f746f6275662e67656e6572617465642e436c69656e7450726f746f7324436c69656e745365727669636524322e63616c6c426c6f636b696e674d6574686f6428436c69656e7450726f746f732e6a6176613a3239363039290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270635365727665722e63616c6c285270635365727665722e6a6176613a32313534290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e43616c6c52756e6e65722e72756e2843616c6c52756e6e65722e6a6176613a313038290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270634578656375746f722e636f6e73756d65724c6f6f70285270634578656375746f722e6a6176613a313134290a096174206f72672e6170616368652e6861646f6f702e68626173652e6970632e5270634578656375746f7224312e72756e285270634578656375746f722e6a6176613a3934290a096174206a6176612e6c616e672e5468726561642e72756e285468726561642e6a6176613a373232290a0a060a04082712000a060a0408281200");
+    
+    resetMockClient();
+    
+    final int id = 144468;
+    
+    final GetRequest get = new GetRequest(TABLE, ROW);
+    final Deferred<Object> deferred = get.getDeferred();
+    rpcs_inflight.put(144464, get);
+    rpcs_inflight.put(id, get);
+
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOf(pkg, 25)));
+    region_client.channelRead(ctx, Unpooled.wrappedBuffer(Arrays.copyOfRange(pkg, 25, pkg.length)));
+  }
+  
   /**
    * Creates a simple GetRequest response with some dummy data and a single 
    * column in a row. The request lacks cell meta data.
@@ -1056,7 +1013,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
    * @return A channel buffer with a ProtoBuf object as HBase would return
    * @throws IOException If we couldn't write the ProtoBuf for some reason
    */
-/*  private ByteBuf buildGoodResponse(final boolean array_backed, final int id)
+  private ByteBuf buildGoodResponse(final boolean array_backed, final int id)
       throws IOException {
     final Cell cell = Cell.newBuilder()
         .setRow(Bytes.wrap(ROW))
@@ -1098,9 +1055,9 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
     
     Bytes.setInt(buf, buf.length - 4);
     if (array_backed) {
-      return ByteBufs.wrappedBuffer(buf);
+      return Unpooled.wrappedBuffer(buf);
     } else {
-      return new ReadOnlyByteBuf(ByteBufs.wrappedBuffer(buf));
+      return new ReadOnlyByteBuf(Unpooled.wrappedBuffer(buf));
     }
   }
 
@@ -1124,4 +1081,7 @@ public class TestRegionClientDecode extends BaseTestRegionClient {
         region_client, "rpcs_inflight");
   }
   
+  public static byte[] stringToBytes(final String bytes) {
+    return DatatypeConverter.parseHexBinary(bytes);
+  }
 }

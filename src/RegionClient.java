@@ -427,7 +427,8 @@ final class RegionClient extends ReplayingDecoder<Void> {
         return "wait until " + nrpcs + " RPCs complete";
       }
     };
-
+    hbase_client.disconnectRegionClient(this, chan);
+    
     // First, check whether we have RPCs in flight.  If we do, we need to wait
     // until they complete.
     {
@@ -1054,20 +1055,11 @@ final class RegionClient extends ReplayingDecoder<Void> {
     }
   }
 
-//  @Override
-//  public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) {
-//    chan = null;
-//    super.channelDisconnected(ctx, e);  // Let the ReplayingDecoder cleanup.
-//    cleanup(ctx.channel());
-//  }
-
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) {
     chan = null;
-    // No need to call super.channelClosed() because we already called
-    // super.channelDisconnected().  If we get here without getting a
-    // DISCONNECTED event, then we were never connected in the first place so
-    // the ReplayingDecoder has nothing to cleanup.
+    LOG.warn("Closing region client due to inactive: " + this);
+    hbase_client.disconnectRegionClient(this, ctx.channel());
     cleanup(ctx.channel());
   }
 
@@ -1122,21 +1114,6 @@ final class RegionClient extends ReplayingDecoder<Void> {
       }
     }
   }
-
-//  @Override
-//  public void handleUpstream(final ChannelHandlerContext ctx,
-//                             final ChannelEvent e) throws Exception {
-//    if (LOG.isDebugEnabled()) {
-//      LOG.debug("handleUpstream {}", e);
-//    }
-//    if (e instanceof ChannelStateEvent) {
-//      ChannelStateEvent evt = (ChannelStateEvent) e;
-//      if (evt.getState() == ChannelState.CONNECTED && evt.getValue() == null) {
-//        LOG.warn("Channel was disconnected unexpectedly: " + this);
-//      }
-//    }
-//    super.handleUpstream(ctx, e);
-//  }
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext ctx,
@@ -1317,7 +1294,7 @@ final class RegionClient extends ReplayingDecoder<Void> {
     final RPCPB.ResponseHeader header;
     
     if (secure_rpc_helper != null) {
-      buf = secure_rpc_helper.handleResponse(buf, chan);
+      buf = secure_rpc_helper.handleResponse(buf, ctx.channel());
       if (buf == null) {
         // everything in the buffer was part of the security handshake so we're
         // done here.
