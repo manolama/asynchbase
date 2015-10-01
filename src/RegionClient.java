@@ -1422,7 +1422,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
       rpcid = buf.readInt();
     }
 
-    final HBaseRpc rpc = rpcs_inflight.remove(rpcid);
+    final HBaseRpc rpc = rpcs_inflight.get(rpcid);
     if (rpc == null) {
       // TODO - account for the rpcid overflow
       if (rpcid > -1 && rpcid <= this.rpcid.get()) {
@@ -1485,6 +1485,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
         e = new NonRecoverableException(msg, e);
       }
       rpc.callback(e);
+      removeRpc(rpc, false);
       throw e;
     }
 
@@ -1494,6 +1495,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
                 + ", " + actualReadableBytes() + " readable bytes left"
                 + ", rpc=" + rpc);
     }
+    removeRpc(rpc, false);
 
     if (decoded instanceof NotServingRegionException
         && rpc.getRegion() != null) {
