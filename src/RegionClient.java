@@ -2120,7 +2120,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
    */
   HBaseRpc removeRpc(final HBaseRpc rpc, final boolean timedout) {
     final HBaseRpc old_rpc = rpcs_inflight.remove(rpc.rpc_id);
-    if (old_rpc != rpc) {
+    if (old_rpc != null && old_rpc != rpc) {
       LOG.error("Removed the wrong RPC " + old_rpc + 
           " when we meant to remove " + rpc);
       if (old_rpc != null) {
