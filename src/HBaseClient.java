@@ -52,7 +52,6 @@ import org.jboss.netty.channel.socket.nio.NioChannelConfig;
 import org.jboss.netty.channel.socket.nio.NioClientBossPool;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioWorkerPool;
-import org.jboss.netty.handler.timeout.IdleState;
 import org.jboss.netty.handler.timeout.IdleStateAwareChannelHandler;
 import org.jboss.netty.handler.timeout.IdleStateEvent;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
@@ -77,6 +76,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
@@ -214,6 +214,9 @@ public final class HBaseClient {
    */
   public static final byte[] EMPTY_ARRAY = new byte[0];
 
+  /** A random generator used for jitter. */
+  public static Random RANDOM = new Random(System.nanoTime());
+  
   /** A byte array containing a single zero byte.  */
   private static final byte[] ZERO_ARRAY = new byte[] { 0 };
 
@@ -424,6 +427,9 @@ public final class HBaseClient {
   /** Default RPC timeout in milliseconds from the config */
   private final int rpc_timeout;
 
+  /** An optional jitter percentage used when retrying RPCs. */
+  protected final int jitter_percent;
+
   /** Whether or not we have to scan meta instead of making getClosestBeforeRow calls. */
   private volatile boolean scan_meta;
   
@@ -560,6 +566,7 @@ public final class HBaseClient {
     increment_buffer_size = config.getInt("hbase.increments.buffer_size");
     nsre_low_watermark = config.getInt("hbase.nsre.low_watermark");
     nsre_high_watermark = config.getInt("hbase.nsre.high_watermark");
+    jitter_percent = config.getInt("hbase.rpcs.jitter");
     if (config.properties.containsKey("hbase.increments.durable")) {
       increment_buffer_durable = config.getBoolean("hbase.increments.durable");
     }
@@ -633,6 +640,8 @@ public final class HBaseClient {
     increment_buffer_size = config.getInt("hbase.increments.buffer_size");
     nsre_low_watermark = config.getInt("hbase.nsre.low_watermark");
     nsre_high_watermark = config.getInt("hbase.nsre.high_watermark");
+    jitter_percent = config.getInt("hbase.rpcs.jitter");
+    
     if (config.properties.containsKey("hbase.increments.durable")) {
       increment_buffer_durable = config.getBoolean("hbase.increments.durable");
     }
@@ -3685,7 +3694,7 @@ public final class HBaseClient {
       }
     };
     
-    newTimeout(new NSRETimer(), probe.getRetryDelay());
+    newTimeout(new NSRETimer(), probe.getRetryDelay(jitter_percent));
   }
   
   /**

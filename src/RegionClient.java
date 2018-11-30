@@ -122,7 +122,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
   }
 
   /** We don't know the RPC protocol version of the server yet.  */
-  private static final byte SERVER_VERSION_UNKNWON = 0;
+  private static final byte SERVER_VERSION_UNKNOWN = 0;
 
   /** Protocol version we pretend to use for HBase 0.90 and before.  */
   static final byte SERVER_VERSION_090_AND_BEFORE = 24;
@@ -169,7 +169,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
    * No synchronization is typically used to read this value.
    * It is written only once by {@link ProtocolVersionCB}.
    */
-  private byte server_version = SERVER_VERSION_UNKNWON;
+  private byte server_version = SERVER_VERSION_UNKNOWN;
 
   /**
    * RPCs being batched together for efficiency.
@@ -594,7 +594,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
       // 2nd param: what protocol version to speak.  If we don't know what the
       // server expects, try an old version first (0.90 and before).
       // Otherwise tell the server we speak the same version as it does.
-      writeHBaseLong(buf, server_version == SERVER_VERSION_UNKNWON
+      writeHBaseLong(buf, server_version == SERVER_VERSION_UNKNOWN
                      ?  SERVER_VERSION_090_AND_BEFORE : server_version);
       return buf;
     }
@@ -625,7 +625,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
      */
     public Long call(final Object response) throws Exception {
       if (response instanceof VersionMismatchException) {
-        if (server_version == SERVER_VERSION_UNKNWON) {
+        if (server_version == SERVER_VERSION_UNKNOWN) {
           // If we get here, it's because we tried to handshake with a server
           // running HBase 0.92 or above, but using a pre-0.92 handshake.  So
           // we know we have to handshake differently.
@@ -879,12 +879,20 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
           final BatchableRpc rpc = batch.get(i);
           final Object r = response.result(i);
           if (r instanceof RecoverableException) {
-            if (r instanceof NotServingRegionException) {
+            if (r instanceof NotServingRegionException ||
+                r instanceof RegionMovedException || 
+                r instanceof RegionServerStoppedException) {
               // We need to do NSRE handling here too, as the response might
               // have come back successful, but only some parts of the batch
               // could have encountered an NSRE.
-              hbase_client.handleNSRE(rpc, rpc.getRegion().name(),
-                                      (NotServingRegionException) r);
+              try {
+                hbase_client.handleNSRE(rpc, 
+                                        rpc.getRegion().name(),
+                                        (RecoverableException) r);
+              } catch (Exception e) {
+                LOG.error("Unexpected exception processing NSRE for RPC " + rpc, e);
+                rpc.callback(e);
+              }
             } else {
               retryEdit(rpc, (RecoverableException) r);
             }
@@ -900,18 +908,9 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
 
       private Object handleException(final Exception e) {
         if (!(e instanceof RecoverableException)) {
-
-          if (e instanceof HBaseException){
-            HBaseException ex = (HBaseException)e;
-            for (final BatchableRpc rpc : request.batch()) {
-              rpc.callback(ex.make(ex, rpc));
-            }
-          } else{
-            for (final BatchableRpc rpc : request.batch()) {
-              rpc.callback(e);
-            }
+          for (final BatchableRpc rpc : request.batch()) {
+            rpc.callback(e);
           }
-
           return e;  // Can't recover from this error, let it propagate.
         }
         if (LOG.isDebugEnabled()) {
@@ -919,7 +918,19 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
                     + request.size() + " RPCs individually.", e);
         }
         for (final BatchableRpc rpc : request.batch()) {
-          retryEdit(rpc, (RecoverableException) e);
+          if (e instanceof NotServingRegionException ||
+              e instanceof RegionMovedException || 
+              e instanceof RegionServerStoppedException) {
+            try {
+              hbase_client.handleNSRE(rpc, rpc.getRegion().name(),
+                                      (RecoverableException) e);
+            } catch (Exception ex) {
+              LOG.error("Unexpected exception trying to NSRE the RPC " + rpc, ex);
+              rpc.callback(ex);
+            }
+          } else {
+            rpc.callback(e);
+          }
         }
         return null;  // We're retrying, so let's call it a success for now.
       }
@@ -946,7 +957,19 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
     // This RPC has already been delayed because of a failure,
     // so make sure we don't buffer it again.
     rpc.setBufferable(false);
-    return hbase_client.sendRpcToRegion(rpc);
+    final class RetryTimer implements TimerTask {
+      public void run(final Timeout timeout) {
+        hbase_client.sendRpcToRegion(rpc);
+      }
+      @Override
+      public String toString() {
+        return "RPC Edit Retry Timer Task: " + rpc;
+      }
+    }
+    
+    hbase_client.newTimeout(new RetryTimer(), 
+        rpc.getRetryDelay(hbase_client.jitter_percent));
+    return rpc.getDeferred();
   }
 
   /**
@@ -1012,8 +1035,12 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
         // retry the RPC later or fail it immediately so we don't fill up the
         // channel's buffer.
         if (check_write_status && !chan.isWritable()) {
-          rpc.callback(new PleaseThrottleException("Region client [" + this + 
-              " ] channel is not writeable.", null, rpc, rpc.getDeferred()));
+          if (dead) {
+            handleRpcOnDeadClient(rpc);
+          } else {
+            // TODO - requeue this at some point instead of throwing it back
+            // immediately
+          }
           removeRpc(rpc, false);
           writes_blocked.incrementAndGet();
           return;
@@ -1047,12 +1074,7 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
       }
     }
     if (dead) {
-      if (rpc.getRegion() == null  // Can't retry, dunno where it should go.
-          || rpc.failfast()) {
-        rpc.callback(new ConnectionResetException(null));
-      } else {
-        hbase_client.sendRpcToRegion(rpc);  // Re-schedule the RPC.
-      }
+      handleRpcOnDeadClient(rpc);
       return;
     } else if (tryagain) {
       // This recursion will not lead to a loop because we only get here if we
@@ -1066,6 +1088,27 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
     LOG.debug("RPC queued: {}", rpc);
   }
 
+  /**
+   * Handles an RPC that was sent to this region server even though it's been
+   * marked as dead. The RPC may be retried if it has a region set by kicking it 
+   * back up to the HBase client so that it can find the proper region server 
+   * client. Otherwise if it doesn't have a region or it's marked as fail fast 
+   * then we just call it back with an exception.
+   * @param rpc
+   */
+  private void handleRpcOnDeadClient(final HBaseRpc rpc) {
+    if (rpc.getRegion() == null  // Can't retry, dunno where it should go.
+        || rpc.failfast()) {
+      rpc.callback(new ConnectionResetException(chan));
+    } else {
+      LOG.warn("Returning RPC to HBaseClient as this region client has been "
+          + "marked as dead: " + this + " RPC: " + rpc);
+      // don't allow RPCs to loop infinitely
+      rpc.attempt++;
+      hbase_client.sendRpcToRegion(rpc);  // Re-schedule the RPC.
+    }
+  }
+  
   /**
    * Transforms the given single-edit multi-put into a regular single-put.
    * @param multiput The single-edit multi-put to transform.
@@ -1288,7 +1331,8 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
     // more than M RPCs in flight at the same time, and we may be overwhelming
     // the server if we do.
 
-    rpc.rpc_id = this.rpcid.incrementAndGet();
+    final int rpcid = this.rpcid.incrementAndGet();
+    rpc.setIdAndClient(rpcid, this);
     ChannelBuffer payload;
     try {
       payload = rpc.serialize(server_version);
@@ -1526,13 +1570,50 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
     }
     removeRpc(rpc, false);
 
-    if (decoded instanceof NotServingRegionException
-        && rpc.getRegion() != null) {
+    if ((decoded instanceof NotServingRegionException ||
+         decoded instanceof RegionMovedException || 
+           (decoded instanceof RegionServerStoppedException && 
+            !(rpc instanceof MultiAction)))
+       && rpc.getRegion() != null) {
+      
       // We only handle NSREs for RPCs targeted at a specific region, because
       // if we don't know which region caused the NSRE (e.g. during multiPut)
       // we can't do anything about it.
       hbase_client.handleNSRE(rpc, rpc.getRegion().name(),
                               (RecoverableException) decoded);
+      return null;
+    } else if (decoded instanceof RecoverableException && 
+        // RSSE could pop on a multi action in which case we want to pass it
+        // on to the multi action callback handler.
+        !(decoded instanceof RegionServerStoppedException && 
+          rpc instanceof MultiAction)) {
+      
+      // retry a recoverable RPC that doesn't conform to the NSRE path
+      if (hbase_client.cannotRetryRequest(rpc)) {
+        return HBaseClient.tooManyAttempts(rpc, (RecoverableException)decoded);
+      }
+      
+      final class RetryTimer implements TimerTask {
+        public void run(final Timeout timeout) {
+          if (isAlive()) {
+            sendRpc(rpc);
+          } else {
+            if (rpc instanceof MultiAction) {
+              ((MultiAction) rpc).callback(decoded);
+            } else {
+              hbase_client.sendRpcToRegion(rpc);
+            }
+          }
+        }
+        @Override
+        public String toString() {
+          return "RPC Recoverable Retry Timer Task: " + rpc;
+        }
+      }
+      
+      rpc.cancelTimeout();
+      hbase_client.newTimeout(new RetryTimer(), 
+          rpc.getRetryDelay(hbase_client.jitter_percent));
       return null;
     } else if (decoded instanceof RecoverableException && 
         // RSSE could pop on a multi action in which case we want to pass it
@@ -1567,7 +1648,8 @@ final class RegionClient extends ReplayingDecoder<VoidEnum> {
         rpc.timeout_handle = null;
       }
       
-      hbase_client.newTimeout(new RetryTimer(), rpc.getRetryDelay());
+      hbase_client.newTimeout(new RetryTimer(), 
+          rpc.getRetryDelay(hbase_client.jitter_percent));
       return null;
     }
 
