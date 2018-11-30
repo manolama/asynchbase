@@ -39,7 +39,7 @@ proto_builddir := $(top_builddir)/protobuf
 spec_title := Asynchronous HBase Client
 spec_vendor := The Async HBase Authors
 # Semantic Versioning (see http://semver.org/).
-spec_version := 1.8.2
+spec_version := 1.8.3-SNAPSHOT
 jar := $(top_builddir)/asynchbase-$(spec_version).jar
 
 asynchbase_PROTOS := \
@@ -136,6 +136,7 @@ asynchbase_SOURCES := \
 	src/SubstringComparator.java	\
 	src/TableNotFoundException.java	\
 	src/TimestampsFilter.java	\
+	src/UnknownProtocolException.java	\
 	src/UnknownRowLockException.java	\
 	src/UnknownScannerException.java	\
 	src/ValueFilter.java	\
