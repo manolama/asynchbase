@@ -42,6 +42,7 @@ import org.apache.zookeeper.data.Stat;
 import org.hbase.async.Scanner.CloseScannerRequest;
 import org.hbase.async.Scanner.GetNextRowsRequest;
 import org.hbase.async.Scanner.OpenScannerRequest;
+import org.hbase.async.auth.MTLSClientAuthProvider;
 import org.hbase.async.generated.ZooKeeperPB;
 import org.jboss.netty.channel.ChannelEvent;
 import org.jboss.netty.channel.ChannelHandler;
@@ -272,6 +273,8 @@ public final class HBaseClient {
    */
   private final HashedWheelTimer rpc_timeout_timer;
 
+  private volatile MTLSClientAuthProvider mtls_client_auth_provider;
+  
   /** Up to how many milliseconds can we buffer an edit on the client side.  */
   private volatile short flush_interval;
   
@@ -4022,6 +4025,17 @@ public final class HBaseClient {
     '~', 'p', 'r', 'o', 'b', 'e', '~', '<', ';', '_', '<',
   };
 
+  MTLSClientAuthProvider getMTLSClientAuthProvider() {
+    if (mtls_client_auth_provider == null) {
+      synchronized (this) {
+        if (mtls_client_auth_provider == null) {
+          mtls_client_auth_provider = new MTLSClientAuthProvider(this);
+        }
+      }
+    }
+    return mtls_client_auth_provider;
+  }
+  
   /**
    * Returns a newly allocated key to probe, to check a region is online.
    * Sometimes we need to "poke" HBase to see if a region is online or a table
@@ -4166,8 +4180,8 @@ public final class HBaseClient {
 
     @Override
     public void sendDownstream(final ChannelEvent event) {
-      //LoggerFactory.getLogger(RegionClientPipeline.class)
-      //  .debug("hooked sendDownstream " + event);
+      LoggerFactory.getLogger(RegionClientPipeline.class)
+        .debug("hooked sendDownstream [" + event.getClass() + "] " + event);
       if (event instanceof ChannelStateEvent) {
         handleDisconnect((ChannelStateEvent) event);
       }
@@ -4176,8 +4190,8 @@ public final class HBaseClient {
 
     @Override
     public void sendUpstream(final ChannelEvent event) {
-      //LoggerFactory.getLogger(RegionClientPipeline.class)
-      //  .debug("hooked sendUpstream " + event);
+      LoggerFactory.getLogger(RegionClientPipeline.class)
+        .debug("hooked sendUpstream [" + event.getClass() + "] " + event);
       if (event instanceof ChannelStateEvent) {
         handleDisconnect((ChannelStateEvent) event);
       }

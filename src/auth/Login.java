@@ -218,6 +218,7 @@ public class Login {
    */
   private synchronized LoginContext login(final String login_context_name) 
       throws LoginException {
+    System.out.println("------------- Building login context");
     if (login_context_name == null || login_context_name.isEmpty()) {
       throw new LoginException(
           "Login context name (JAAS file section header) was null or empty. " +

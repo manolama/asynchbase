@@ -1216,6 +1216,7 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
         if (hbase_client.getConfig().getBoolean("hbase.security.auth.enable")) {
           secure_rpc_helper = new SecureRpcHelper96(hbase_client, this, 
               chan.getRemoteAddress());
+          System.out.println("        RC: Sending secure hello....");
           secure_rpc_helper.sendHello(chan);
           LOG.info("Initialized security helper: " + secure_rpc_helper + 
               " for region client: " + this);
@@ -1230,6 +1231,8 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
       } else {
         header = header090();
       }
+      
+      System.out.println("        RC: Sending regular hello....");
       helloRpc(chan, header);
     }
   }
@@ -1344,7 +1347,7 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
   public void handleUpstream(final ChannelHandlerContext ctx,
                              final ChannelEvent e) throws Exception {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("handleUpstream {}", e);
+      LOG.debug("handleUpstream Class [{}] {}", e.getClass(), e);
     }
     super.handleUpstream(ctx, e);
   }
@@ -2278,6 +2281,7 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
 
   /** Hello header for HBase 0.95 and later.  */
   private ChannelBuffer header095() {
+    System.out.println("          SEND HEADER 95x.......");
     final RPCPB.UserInformation user = RPCPB.UserInformation.newBuilder()
       .setEffectiveUser(System.getProperty("user.name", "asynchbase"))
       .build();

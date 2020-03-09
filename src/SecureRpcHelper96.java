@@ -40,6 +40,7 @@ import javax.security.sasl.Sasl;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.Arrays;
 
 /**
  * Implementation for security on HBase servers version 96 and up
@@ -71,15 +72,20 @@ class SecureRpcHelper96 extends SecureRpcHelper {
 
   @Override
   public void sendHello(final Channel channel) {
+    System.out.println("          Sending hello: " + Arrays.toString(connection_header));
     ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(connection_header);
     Channels.write(channel, buffer);
 
     // sasl_client is null for Simple Auth case
     if (sasl_client != null)  {
+      System.out.println("      Getting challenge bytes...");
       byte[] challenge_bytes = null;
-      if (sasl_client.hasInitialResponse()) {
+      //if (sasl_client.hasInitialResponse()) {
+        //System.out.println("       HAS initial response");
+      System.out.println("         PROCESS CHALLENGE");
+      System.out.println("         READABLE " + channel.isReadable());
         challenge_bytes = processChallenge(new byte[0]);
-      }
+      //}
       if (challenge_bytes != null) {
         final byte[] buf = new byte[4 + challenge_bytes.length];
         buffer = ChannelBuffers.wrappedBuffer(buf);
@@ -87,13 +93,26 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         buffer.writeInt(challenge_bytes.length);
         buffer.writeBytes(challenge_bytes);
 
-        //if (LOG.isDebugEnabled()) {
-        //  LOG.debug("Sending initial SASL Challenge: " + Bytes.pretty(buf));
-        //}
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Sending initial SASL Challenge: " + Bytes.pretty(buf));
+        }
         Channels.write(channel, buffer);
       } else {
+        if (!sasl_client.isComplete()) {
+          try {
+            System.out.println("sleep to wait?00000000000000000");
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
+        }
+        
+        
+        System.out.println("     COMPLETE? " + sasl_client.isComplete());
         // TODO - is this exception worthy? We'll never get back here
         LOG.error("Missing initial Sasl response on client " + region_client);
+        throw new RuntimeException("Missing initial Sasl response on client " + region_client);
       }
     } else {
       sendRPCHeader(channel);
@@ -109,7 +128,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
 
     if (!sasl_client.isComplete()) {
       final int state = buf.readInt();
-
+      System.out.println("            STATE: " + state);
       //0 is success, 1 is an exception
       //If unsuccessful let common exception handling do the work
       if (state != 0) {
@@ -121,6 +140,8 @@ class SecureRpcHelper96 extends SecureRpcHelper {
               + "Check HBase logs.: " + this);
         }
         int len = buf.readInt();
+        System.out.println("           LEN: " + len);
+        
         byte[] temp = new byte[len];
         buf.readBytes(temp);
         final String exception = new String(temp);
