@@ -268,14 +268,26 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
     }
     
   }
-  
+  String user;
   @Override
   public SaslClient newSaslClient(String service_ip,
       Map<String, String> props) {
     try {
       //props.put("com.sun.security.sasl.digest.cipher", "md5-sess");
       final Login client_login = Login.getCurrentLogin();
-      
+      String server_principal = hbase_client.getConfig().getString(KerberosClientAuthProvider.PRINCIPAL_KEY);
+      if (server_principal.contains("_HOST")) {
+        try {
+          final String host = InetAddress.getByName(service_ip)
+              .getCanonicalHostName();
+          server_principal = server_principal.replaceAll("_HOST", host);
+        } catch (UnknownHostException e) {
+          throw new IllegalStateException("Failed to resolve hostname for: " + 
+              service_ip, e);
+        }
+      }
+      user = server_principal;
+      System.out.println("                    USER: " + user);
       
       class SaslClientCallbackHandler implements CallbackHandler {
 //        private final String userName;

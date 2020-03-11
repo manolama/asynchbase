@@ -231,6 +231,7 @@ public abstract class SecureRpcHelper {
    * the payload
    */
   public ChannelBuffer wrap(final ChannelBuffer content) {
+    System.out.println("      ********* WRAPPING: " + use_wrap);
     if (!use_wrap) {
       return content;
     }

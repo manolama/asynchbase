@@ -696,7 +696,9 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
     // The following line will make this client no longer queue incoming
     // RPCs, as we're now ready to communicate with the server.
     this.chan = chan;  // Volatile write.
-    sendQueuedRpcs();
+    
+    // TEMP!!!!!!!!!!!!!!!!!!!!!!!!
+    //sendQueuedRpcs();
   }
 
   private static final byte[] GET_CLOSEST_ROW_BEFORE = new byte[] {

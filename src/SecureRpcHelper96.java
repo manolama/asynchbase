@@ -110,7 +110,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         if (!sasl_client.isComplete()) {
           byte[] buf = new byte[4];
           Channels.write(channel, ChannelBuffers.wrappedBuffer(buf));
-          System.out.println("        SENT EMPTy LEN.");
+          System.out.println("        SENT EMPTY LEN.");
           return;
         }
         
@@ -125,6 +125,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     }
   }
   
+  boolean sentFirstResponse = false;
   @Override
   public ChannelBuffer handleResponse(final ChannelBuffer buf, 
       final Channel chan) {
@@ -162,6 +163,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
             + "] and message [" + msg + "]: " + this);
       } 
 
+      
       final int len = buf.readInt();
       final byte[] b = new byte[len];
       buf.readBytes(b);
@@ -171,7 +173,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
 
       final byte[] challenge_bytes = processChallenge(b);
 
-      if (challenge_bytes != null) {
+      if (challenge_bytes != null && !sasl_client.isComplete()) {
         final byte[] out_bytes = new byte[4 + challenge_bytes.length];
         final ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(out_bytes);
         out_buffer.clear();
@@ -219,7 +221,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
       .setEffectiveUser(client_auth_provider.getClientUsername())
       .build();
     final RPCPB.ConnectionHeader pb = RPCPB.ConnectionHeader.newBuilder()
-      .setUserInfo(user)
+      //.setUserInfo(user) // native sends null
       .setServiceName("ClientService")
       .setCellBlockCodecClass("org.apache.hadoop.hbase.codec.KeyValueCodec")
       .build();
@@ -228,6 +230,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     final ChannelBuffer header = ChannelBuffers.wrappedBuffer(buf);
     header.clear();
     header.writeInt(pblen);  // 4 bytes
+    System.out.println("       HEADER: " + Arrays.toString(pb.toByteArray()));
     try {
       final CodedOutputStream output =
         CodedOutputStream.newInstance(buf, 4, pblen);
@@ -240,7 +243,8 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     // so move the write index forward.
     header.writerIndex(buf.length);
     Channels.write(chan, wrap(header));
-    System.out.println("            SENT HEADER!!!!!!!! READY!?!?!?");
+    
+    System.out.println("            SENT HEADER!!!!!!!! READY!?!?!?     " + buf.length);
     region_client.becomeReady(chan, RegionClient.SERVER_VERSION_095_OR_ABOVE);
   }
 }
