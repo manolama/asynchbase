@@ -33,6 +33,7 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.security.auth.Subject;
 import javax.security.sasl.Sasl;
@@ -99,6 +100,8 @@ public abstract class SecureRpcHelper {
   
   /** Whether or not to encrypt/decrypt the payload on the socket */
   protected boolean use_wrap;
+  
+  public AtomicBoolean complete = new AtomicBoolean(false);
 
   /**
    * Ctor that instantiates the authentication provider and attempts to 

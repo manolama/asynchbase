@@ -32,6 +32,7 @@ import javax.security.auth.Subject;
 import javax.security.sasl.SaslClient;
 
 import org.hbase.async.HBaseClient;
+import org.jboss.netty.channel.Channel;
 
 /**
  * Class to extend to support other authentication mechanisms for Secure RPC 
@@ -47,6 +48,8 @@ public abstract class ClientAuthProvider {
   
   /** The hbase client object for fetching settings */
   final HBaseClient hbase_client;
+  
+  public boolean callback_done;
   
   /**
    * Default CTor that stores a reference to the AsyncHBase client

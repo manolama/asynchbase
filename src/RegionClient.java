@@ -1209,8 +1209,13 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
       secure_rpc_helper = new SecureRpcHelper94(hbase_client, this, 
           chan.getRemoteAddress());
       secure_rpc_helper.sendHello(chan);
-      LOG.info("Initialized security helper: " + secure_rpc_helper + 
-          " for region client: " + this);
+      if (secure_rpc_helper.complete.get()) {
+        LOG.info("Initialized security helper: " + secure_rpc_helper + 
+            " for region client: " + this);
+      } else {
+        LOG.info("Initializing security helper: " + secure_rpc_helper + 
+            " for region client: " + this);
+      }
     } else {
       if (!hbase_client.has_root || hbase_client.split_meta) {
         if (hbase_client.getConfig().getBoolean("hbase.security.auth.enable")) {
@@ -1568,6 +1573,7 @@ public final class RegionClient extends ReplayingDecoder<VoidEnum> {
       if (buf == null) {
         // everything in the buffer was part of the security handshake so we're
         // done here.
+        System.out.println("               Leaving decode with unfihshed SASL");
         return null;
       }
     }

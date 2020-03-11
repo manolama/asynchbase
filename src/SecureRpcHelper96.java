@@ -70,22 +70,25 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         }; 
   }
 
+  volatile boolean sentEmptyByte = false;
+  
   @Override
   public void sendHello(final Channel channel) {
     System.out.println("          Sending hello: " + Arrays.toString(connection_header));
+    
     ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(connection_header);
     Channels.write(channel, buffer);
 
     // sasl_client is null for Simple Auth case
     if (sasl_client != null)  {
-      System.out.println("      Getting challenge bytes...");
+      System.out.println("      Getting challenge bytes: " + sasl_client.hasInitialResponse());
       byte[] challenge_bytes = null;
-      //if (sasl_client.hasInitialResponse()) {
+      if (sasl_client.hasInitialResponse()) {
         //System.out.println("       HAS initial response");
-      System.out.println("         PROCESS CHALLENGE");
-      System.out.println("         READABLE " + channel.isReadable());
+        System.out.println("         PROCESS CHALLENGE");
+        System.out.println("         READABLE " + channel.isReadable());
         challenge_bytes = processChallenge(new byte[0]);
-      //}
+      }
       if (challenge_bytes != null) {
         final byte[] buf = new byte[4 + challenge_bytes.length];
         buffer = ChannelBuffers.wrappedBuffer(buf);
@@ -98,14 +101,17 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         }
         Channels.write(channel, buffer);
       } else {
+//        if (true) {
+//          byte[] buf = new byte[4];
+//          Channels.write(channel, ChannelBuffers.wrappedBuffer(buf));
+//          System.out.println("        SENT EMPTy LEN.");
+//          return;
+//        }
         if (!sasl_client.isComplete()) {
-          try {
-            System.out.println("sleep to wait?00000000000000000");
-            Thread.sleep(1000);
-          } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
+          byte[] buf = new byte[4];
+          Channels.write(channel, ChannelBuffers.wrappedBuffer(buf));
+          System.out.println("        SENT EMPTy LEN.");
+          return;
         }
         
         
@@ -118,14 +124,14 @@ class SecureRpcHelper96 extends SecureRpcHelper {
       sendRPCHeader(channel);
     }
   }
-
+  
   @Override
   public ChannelBuffer handleResponse(final ChannelBuffer buf, 
       final Channel chan) {
     if (sasl_client == null) {
       return buf;
     }
-
+    System.out.println("                     SASL COMPLETE: " + sasl_client.isComplete());
     if (!sasl_client.isComplete()) {
       final int state = buf.readInt();
       System.out.println("            STATE: " + state);
@@ -159,21 +165,21 @@ class SecureRpcHelper96 extends SecureRpcHelper {
       final int len = buf.readInt();
       final byte[] b = new byte[len];
       buf.readBytes(b);
-      //if (LOG.isDebugEnabled()) {
-      //  LOG.debug("Got SASL challenge: "+Bytes.pretty(b));
-      //}
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Got SASL challenge: "+Bytes.pretty(b));
+      }
 
       final byte[] challenge_bytes = processChallenge(b);
 
       if (challenge_bytes != null) {
         final byte[] out_bytes = new byte[4 + challenge_bytes.length];
-        //if (LOG.isDebugEnabled()) {
-        //  LOG.debug("Sending SASL response: "+Bytes.pretty(out_bytes));
-        //}
         final ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(out_bytes);
         out_buffer.clear();
         out_buffer.writeInt(challenge_bytes.length);
         out_buffer.writeBytes(challenge_bytes);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Sending SASL response: "+ Bytes.pretty(out_bytes));
+        }
         Channels.write(chan, out_buffer);
       }
 
@@ -181,13 +187,24 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         final String qop = (String)sasl_client.getNegotiatedProperty(Sasl.QOP);
         LOG.info("SASL client context established. Negotiated QoP: " + qop + 
             " on for: " + region_client);
+        System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Woot!    " + sasl_client.isComplete());
         sendRPCHeader(chan);
       } else {
-        // TODO is this an issue?
+        LOG.info("Not finished with SASL yet.");
+        final byte[] out_bytes = new byte[4 + challenge_bytes.length];
+        final ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(out_bytes);
+        out_buffer.clear();
+        out_buffer.writeInt(challenge_bytes.length);
+        out_buffer.writeBytes(challenge_bytes);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Sending next SASL response: "+ Bytes.pretty(out_bytes));
+        }
+        Channels.write(chan, out_buffer);
       }
       return null;
     }
 
+    System.out.println("--------------------- SRPC READY!");
     return unwrap(buf);
   }
 
@@ -223,6 +240,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     // so move the write index forward.
     header.writerIndex(buf.length);
     Channels.write(chan, wrap(header));
+    System.out.println("            SENT HEADER!!!!!!!! READY!?!?!?");
     region_client.becomeReady(chan, RegionClient.SERVER_VERSION_095_OR_ABOVE);
   }
 }

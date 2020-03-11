@@ -191,6 +191,9 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
   private volatile Subject subject;
   private volatile LoginContext login_context;
   
+  private volatile byte[] id;
+  private volatile byte[] pass;
+  
   public MTLSClientAuthProvider(final HBaseClient hbase_client) {
     super(hbase_client);
     LOG.info("Initializing MTLS client auth.");
@@ -275,13 +278,13 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
       
       
       class SaslClientCallbackHandler implements CallbackHandler {
-        private final String userName;
-        private final char[] userPassword;
+//        private final String userName;
+//        private final char[] userPassword;
 
-        public SaslClientCallbackHandler() {
-          this.userName = new String(identifier.getUsername().toByteArray());//SaslUtil.encodeIdentifier(token.getIdentifier());
-          this.userPassword = new char[0];//SaslUtil.encodePassword(token.getPassword());
-        }
+//        public SaslClientCallbackHandler() {
+//          this.userName = new String(identifier.getUsername().toByteArray());//SaslUtil.encodeIdentifier(token.getIdentifier());
+//          this.userPassword = new char[0];//SaslUtil.encodePassword(token.getPassword());
+//        }
 
         public void handle(Callback[] callbacks)
             throws UnsupportedCallbackException {
@@ -306,13 +309,13 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
           }
           if (nc != null) {
             if (LOG.isDebugEnabled())
-              LOG.debug("SASL client callback: setting username: " + userName);
-            nc.setName(userName);
+              LOG.debug("SASL client callback: setting username: " + new String(id));
+            nc.setName(Base64.getEncoder().encodeToString(id));
           }
           if (pc != null) {
             if (LOG.isDebugEnabled())
               LOG.debug("SASL client callback: setting userPassword");
-            pc.setPassword(userPassword);
+            pc.setPassword(Base64.getEncoder().encodeToString(pass).toCharArray());
           }
           if (rc != null) {
             if (LOG.isDebugEnabled())
@@ -320,6 +323,8 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
                   + rc.getDefaultText());
             rc.setText(rc.getDefaultText());
           }
+          
+          
         }
       }
       final SaslClientCallbackHandler hndlr = new SaslClientCallbackHandler();
@@ -328,9 +333,9 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
         @Override
         public SaslClient run() throws Exception {
           LOG.info("Client will use " + MECHANISM[0] + " as SASL mechanism with MTLS Temp.");
-          LOG.debug("Creating sasl client: client=" + 
-              new String(identifier.getUsername().toByteArray()) +
-              ", service=" + SERVICE + ", serviceHostname=" + hostname);
+//          LOG.debug("Creating sasl client: client=" + 
+//              new String(identifier.getUsername().toByteArray()) +
+//              ", service=" + SERVICE + ", serviceHostname=" + hostname);
           
           System.out.println("    PROPS: " + props);
           return Sasl.createSaslClient(
@@ -349,7 +354,7 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
       DynamicConfiguration conf = new DynamicConfiguration(new AppConfigurationEntry[] { MYLOGIN });
       //login_context = new LoginContext(HadoopLoginModule.class.getName(), hndlr);
       
-      Principal p = new SimplePrinciple(new String(identifier.getUsername().toByteArray())); 
+      Principal p = new SimplePrinciple("ymsgrid"); //new String(identifier.getUsername().toByteArray())); 
       AccessControlContext context = AccessController.getContext();
       Subject s = Subject.getSubject(context);
       System.out.println("  CURRENT SUBJECT: " + s);
@@ -360,7 +365,7 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
       
       
       subject = sub;
-      System.out.println("  NEW SUBJECT: " + subject);
+      //System.out.println("  NEW SUBJECT: " + subject);
       return Subject.doAs(sub, new PriviledgedAction());
     } catch (Exception e) {
       LOG.error("Error creating SASL client", e);
@@ -370,11 +375,11 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
 
   @Override
   public String getClientUsername() {
-    try {
-      return identifier.getUsername().toString("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException("WTF?", e);
-    }
+    //try {
+      return "ygrid";//identifier.getUsername().toString("UTF-8");
+//    } catch (UnsupportedEncodingException e) {
+//      throw new RuntimeException("WTF?", e);
+//    }
   }
 
   @Override
@@ -736,41 +741,55 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
 //    Base64 decoder = new Base64(0, null, true);
 //    byte[] data = decoder.decode(token);
     byte[] data = Base64.getUrlDecoder().decode(token);
-    System.out.println(Arrays.toString(data));
-    System.out.println(new String(data));
+    System.out.println("     B64 DECODE: " + Arrays.toString(data));
+    System.out.println("     B64 LENGTH: " + data.length);
+    System.out.println("     B64 String: " + new String(data));
     
-    int i = 5;
-    byte[] temp = Arrays.copyOfRange(data, i, data.length);
-    System.out.println(Arrays.toString(temp));
-    System.out.println(new String(temp));
+//    int i = 5;
+//    byte[] temp = Arrays.copyOfRange(data, i, data.length);
+//    System.out.println(Arrays.toString(temp));
+//    System.out.println(new String(temp));
+    try {
+    
+    int[] offset = new int[] { 0 };
+    int len = MTLSClientAuthProvider.readVInt(data, offset);
+    System.out.println("LEN: " + len);
+    id = Arrays.copyOfRange(data, offset[0], offset[0] + len);
+    offset[0] += len;
+
+    // PASSWord
+    len = MTLSClientAuthProvider.readVInt(data, offset);
+    System.out.println("LEN: " + len);
+    pass = Arrays.copyOfRange(data, offset[0], offset[0] + len);
+    System.out.println("PASS  " + Arrays.toString(data) + "  AS STRING: " + new String(data));
+
     
     // TOKEN: https://git.ouroath.com/hadoop/Hadoop/blob/y-branch-2.8/hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/security/token/Token.java#L327-L334
     
     // https://git.ouroath.com/hadoop/hbase/blob/y1.3/hbase-client/src/main/java/org/apache/hadoop/hbase/protobuf/ProtobufUtil.java#L3344
-    CodedInputStream cis = CodedInputStream.newInstance(temp);
+    CodedInputStream cis = CodedInputStream.newInstance(data);
 //    
-    System.out.println("TEMP: " + temp.length);
-    try {
+    System.out.println("TEMP: " + data.length);
+
 //      AuthenticationProtos.Token identifier = 
 //          AuthenticationProtos.Token.newBuilder().mergeFrom(temp).build();
-      identifier =
-          AuthenticationProtos.TokenIdentifier.newBuilder().mergeFrom(cis).build();
-//      AuthenticationProtos.TokenIdentifier identifier =
-//          AuthenticationProtos.TokenIdentifier.parseFrom(temp);
-      System.out.println("User: " + new String(identifier.getUsername().toByteArray()));
-      System.out.println("Kind: " + identifier.getKind());
-      System.out.println("Key ID: " + identifier.getKeyId());
-      System.out.println("Issue: " + identifier.getIssueDate());
-      System.out.println("Expir: " + identifier.getExpirationDate());
-      System.out.println("Seq: " + identifier.getSequenceNumber());
-      System.out.println("Props: " + identifier.getPropertiesCount());
-      for (PropertyEntry pe : identifier.getPropertiesList()) {
-        System.out.println(pe.getKey() + "  " + pe.getValue());
-      }
-      System.out.println(identifier.getSerializedSize());
-
-      // now, read the password
-      i += 31;
+//      identifier =
+//          AuthenticationProtos.TokenIdentifier.newBuilder().mergeFrom(cis).build();
+////      AuthenticationProtos.TokenIdentifier identifier =
+////          AuthenticationProtos.TokenIdentifier.parseFrom(temp);
+//      System.out.println("User: " + new String(identifier.getUsername().toByteArray()));
+//      System.out.println("Kind: " + identifier.getKind());
+//      System.out.println("Key ID: " + identifier.getKeyId());
+//      System.out.println("Issue: " + identifier.getIssueDate());
+//      System.out.println("Expir: " + identifier.getExpirationDate());
+//      System.out.println("Seq: " + identifier.getSequenceNumber());
+//      System.out.println("Props: " + identifier.getPropertiesCount());
+//      for (PropertyEntry pe : identifier.getPropertiesList()) {
+//        System.out.println(pe.getKey() + "  " + pe.getValue());
+//      }
+//      System.out.println("Serialized size: " + identifier.getSerializedSize());
+//
+//      i += identifier.getSerializedSize() - 1;
       
       
     } catch (InvalidProtocolBufferException e) {
@@ -891,5 +910,41 @@ public class MTLSClientAuthProvider extends ClientAuthProvider
       }
       return true;
     }
+  }
+
+  public static int readVInt(byte[] stream, int[] offset) throws IOException {
+    long n = readVLong(stream, offset);
+    if ((n > Integer.MAX_VALUE) || (n < Integer.MIN_VALUE)) {
+      throw new IOException("value too long to fit in integer");
+    }
+    return (int)n;
+  }
+  
+  public static long readVLong(byte[] stream, int[] offset) throws IOException {
+    byte firstByte = stream[offset[0]++];
+    int len = decodeVIntSize(firstByte);
+    if (len == 1) {
+      return firstByte;
+    }
+    long i = 0;
+    for (int idx = 0; idx < len-1; idx++) {
+      byte b = stream[offset[0]++];
+      i = i << 8;
+      i = i | (b & 0xFF);
+    }
+    return (isNegativeVInt(firstByte) ? (i ^ -1L) : i);
+  }
+  
+  public static int decodeVIntSize(byte value) {
+    if (value >= -112) {
+      return 1;
+    } else if (value < -120) {
+      return -119 - value;
+    }
+    return -111 - value;
+  }
+  
+  public static boolean isNegativeVInt(byte value) {
+    return value < -120 || (value >= -112 && value < 0);
   }
 }
