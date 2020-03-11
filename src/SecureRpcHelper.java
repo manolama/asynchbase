@@ -26,11 +26,14 @@
  */
 package org.hbase.async;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -302,4 +305,54 @@ public abstract class SecureRpcHelper {
     }
   }
 
+  
+  public static void main(String[] args) {
+    System.out.println("      ARGS: " + args);
+    if (args != null) 
+      System.out.println("          " + Arrays.toString(args));
+    if (true) {
+      HBaseClient client = null;
+      
+      boolean kerb = args.length > 0;
+      System.out.println("------------ KERB? " + kerb);
+      String f = kerb ? "/home/clarsen/hbase2.conf" : "/home/clarsen/hbase.conf";
+      System.out.println("      Conf: " + f);
+      try {
+        Config config = new Config(f);
+        client = new HBaseClient(config);
+        GetRequest get = new GetRequest("yamas:tsdb".getBytes(), new byte[] { 0 });
+        
+        ArrayList<KeyValue> row = client.get(get).join();
+        System.out.println(row);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      } catch (Exception e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      } finally {
+        if (client != null) {
+          try {
+            client.shutdown().join();
+          } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
+        }
+      }
+      return;
+      
+      
+      //String t = "IwAAAB8IABIHeW1zZ3JpZBjTDyDEmf3e-i0oxKGv__wtMJ1rFEzi6LlCst0VURf8iLLulPXLMM3vEEhCQVNFX0FVVEhfVE9LRU4kMWM1ZWZkNDktMTE2OC00ZDQzLWFiNGYtYjBiNzg3MDBhOWM1";
+//      String t = "IwAAAB8IABIHeW1zZ3JpZBjTDyDXq8De-i0o17Py_vwtMJNrFE8I7lWlnDyrs08yJVhWrCRIj9uLEEhCQVNFX0FVVEhfVE9LRU4kMWM1ZWZkNDktMTE2OC00ZDQzLWFiNGYtYjBiNzg3MDBhOWM1";
+//      parseToken(t);
+//      System.exit(0);
+    }
+  }
 }

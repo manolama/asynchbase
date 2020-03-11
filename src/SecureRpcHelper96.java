@@ -78,9 +78,11 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     if (sasl_client != null)  {
       byte[] challenge_bytes = null;
       if (sasl_client.hasInitialResponse()) {
+        System.out.println("        HAS INITIAL RESPONSE");
         challenge_bytes = processChallenge(new byte[0]);
       }
       if (challenge_bytes != null) {
+        System.out.println("       SENDING INITIAL SASL CHALLENGE");
         final byte[] buf = new byte[4 + challenge_bytes.length];
         buffer = ChannelBuffers.wrappedBuffer(buf);
         buffer.clear();
@@ -109,6 +111,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
 
     if (!sasl_client.isComplete()) {
       final int state = buf.readInt();
+      System.out.println("               STATE: " + state);
 
       //0 is success, 1 is an exception
       //If unsuccessful let common exception handling do the work
@@ -138,17 +141,17 @@ class SecureRpcHelper96 extends SecureRpcHelper {
       final int len = buf.readInt();
       final byte[] b = new byte[len];
       buf.readBytes(b);
-      //if (LOG.isDebugEnabled()) {
-      //  LOG.debug("Got SASL challenge: "+Bytes.pretty(b));
-      //}
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Got SASL challenge: "+Bytes.pretty(b));
+      }
 
       final byte[] challenge_bytes = processChallenge(b);
-
+      System.out.println("             PROCEDD SASL CHALLENGE");
       if (challenge_bytes != null) {
         final byte[] out_bytes = new byte[4 + challenge_bytes.length];
-        //if (LOG.isDebugEnabled()) {
-        //  LOG.debug("Sending SASL response: "+Bytes.pretty(out_bytes));
-        //}
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Sending SASL response: "+Bytes.pretty(out_bytes));
+        }
         final ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(out_bytes);
         out_buffer.clear();
         out_buffer.writeInt(challenge_bytes.length);
