@@ -69,8 +69,6 @@ class SecureRpcHelper96 extends SecureRpcHelper {
           client_auth_provider.getAuthMethodCode() //authmethod
         }; 
   }
-
-  volatile boolean sentEmptyByte = false;
   
   @Override
   public void sendHello(final Channel channel) {
@@ -89,6 +87,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
         System.out.println("         READABLE " + channel.isReadable());
         challenge_bytes = processChallenge(new byte[0]);
       }
+      
       if (challenge_bytes != null) {
         final byte[] buf = new byte[4 + challenge_bytes.length];
         buffer = ChannelBuffers.wrappedBuffer(buf);
@@ -100,22 +99,11 @@ class SecureRpcHelper96 extends SecureRpcHelper {
           LOG.debug("Sending initial SASL Challenge: " + Bytes.pretty(buf));
         }
         Channels.write(channel, buffer);
-      } else {
-//        if (true) {
-//          byte[] buf = new byte[4];
-//          Channels.write(channel, ChannelBuffers.wrappedBuffer(buf));
-//          System.out.println("        SENT EMPTy LEN.");
-//          return;
-//        }
-        if (!sasl_client.isComplete()) {
+      } else if (!sasl_client.isComplete()) {
           byte[] buf = new byte[4];
           Channels.write(channel, ChannelBuffers.wrappedBuffer(buf));
           System.out.println("        SENT EMPTY LEN.");
-          return;
-        }
-        
-        
-        System.out.println("     COMPLETE? " + sasl_client.isComplete());
+      } else {
         // TODO - is this exception worthy? We'll never get back here
         LOG.error("Missing initial Sasl response on client " + region_client);
         throw new RuntimeException("Missing initial Sasl response on client " + region_client);
@@ -125,7 +113,6 @@ class SecureRpcHelper96 extends SecureRpcHelper {
     }
   }
   
-  boolean sentFirstResponse = false;
   @Override
   public ChannelBuffer handleResponse(final ChannelBuffer buf, 
       final Channel chan) {
@@ -173,7 +160,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
 
       final byte[] challenge_bytes = processChallenge(b);
 
-      if (challenge_bytes != null && !sasl_client.isComplete()) {
+      if (challenge_bytes != null/* && !sasl_client.isComplete()*/) {
         final byte[] out_bytes = new byte[4 + challenge_bytes.length];
         final ChannelBuffer out_buffer = ChannelBuffers.wrappedBuffer(out_bytes);
         out_buffer.clear();
@@ -183,7 +170,9 @@ class SecureRpcHelper96 extends SecureRpcHelper {
           LOG.debug("Sending SASL response: "+ Bytes.pretty(out_bytes));
         }
         Channels.write(chan, out_buffer);
-        return null;
+        if (!sasl_client.isComplete()) {
+          return null;
+        }
       }
 
       if (sasl_client.isComplete()) {
