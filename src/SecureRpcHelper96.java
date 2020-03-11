@@ -183,6 +183,7 @@ class SecureRpcHelper96 extends SecureRpcHelper {
           LOG.debug("Sending SASL response: "+ Bytes.pretty(out_bytes));
         }
         Channels.write(chan, out_buffer);
+        return null;
       }
 
       if (sasl_client.isComplete()) {
